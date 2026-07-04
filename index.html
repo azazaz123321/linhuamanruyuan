@@ -723,7 +723,8 @@
 
     <script>
         // ===== 用户认证系统 =====
-        const REG_SECRET = 'MINSHU2026';
+        // 支持多个注册密钥，请按需修改
+        var REG_KEYS = ['MINSHU2026', 'HUAYU888', 'LINHUA666'];
 
         function showReg() {
             document.getElementById('loginForm').classList.remove('active');
@@ -760,7 +761,7 @@
             if (!username) { err.textContent = '用户名不能为空'; return; }
             if (!password) { err.textContent = '密码不能为空'; return; }
             if (password !== password2) { err.textContent = '两次密码输入不一致'; return; }
-            if (secret !== REG_SECRET) { err.textContent = '注册密钥无效，请联系老板获取'; return; }
+            if (REG_KEYS.indexOf(secret) === -1) { err.textContent = '注册密钥无效，请联系老板获取'; return; }
             var users = getUsers();
             if (users.some(function(u){ return u.username === username; })) {
                 err.textContent = '用户名已被注册';

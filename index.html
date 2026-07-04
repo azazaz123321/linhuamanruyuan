@@ -1067,10 +1067,10 @@
                 '<td>' + escapeHtml(u.username) + '</td>' +
                 '<td>' + (u.role === 'boss' ? '老板' : '店员') + '</td>' +
                 '<td>' +
-                '<button class="btn btn-sm btn-secondary" onclick="resetPassword('' + u.username + '')">重置密码</button> ' +
+                '<button class="btn btn-sm btn-secondary" onclick="resetPassword(\'' + u.username + '\')">重置密码</button> ' +
                 (isSelf
                     ? '<button class="btn btn-sm" disabled title="不能删除自己" style="opacity:0.5;cursor:not-allowed;">删除</button>'
-                    : '<button class="btn btn-sm btn-danger" onclick="deleteAccount('' + u.username + '')">删除</button>') +
+                    : '<button class="btn btn-sm btn-danger" onclick="deleteAccount(\'' + u.username + '\')">删除</button>') +
                 '</td>' +
                 '</tr>';
         });

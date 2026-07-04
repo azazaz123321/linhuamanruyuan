@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>林花满如院入住排期</title>
+    <style>
+        /* ===== 基础重置与变量 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --floor1-bg: #e8f4f8;
+            --floor2-bg: #e8f8e8;
+            --floor3-bg: #fff4e8;
+            --free: #4caf50;
+            --booked: #f44336;
+            --past: #bdbdbd;
+            --today: #ff9800;
+            --text-main: #333;
+            --text-secondary: #666;
+            --border: #e0e0e0;
+            --card-bg: #fff;
+            --header-bg: #f5f5f5;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+            color: var(--text-main);
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* ===== 顶部导航栏 ===== */
+        .header {
+            background: var(--card-bg);
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .month-nav button {
+            background: #f0f0f0;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .month-nav button:hover { background: #e0e0e0; }
+        .month-nav .current-month {
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 120px;
+            text-align: center;
+        }
+        .btn-today {
+            background: var(--free) !important;
+            color: white !important;
+            font-size: 12px !important;
+            width: auto !important;
+            padding: 0 12px !important;
+        }
+        .btn-clear {
+            background: var(--booked) !important;
+            color: white !important;
+            font-size: 12px !important;
+            width: auto !important;
+            padding: 0 12px !important;
+        }
+        .btn-export {
+            background: #2196f3 !important;
+            color: white !important;
+            font-size: 12px !important;
+            width: auto !important;
+            padding: 0 10px !important;
+        }
+        .btn-import {
+            background: #9c27b0 !important;
+            color: white !important;
+            font-size: 12px !important;
+            width: auto !important;
+            padding: 0 10px !important;
+        }
+
+        /* ===== 统计面板 ===== */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .stat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .stat-dot.free { background: var(--free); }
+        .stat-dot.booked { background: var(--booked); }
+        .stat-dot.past { background: var(--past); }
+        .stat-dot.today { background: var(--today); }
+        .stat-value { font-weight: 600; color: var(--text-main); margin-left: 2px; }
+
+        /* ===== 主容器 ===== */
+        .container {
+            padding: 12px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* ===== 楼层卡片 ===== */
+        .floor-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .floor-header {
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .floor-1 .floor-header { background: var(--floor1-bg); color: #1565c0; }
+        .floor-2 .floor-header { background: var(--floor2-bg); color: #2e7d32; }
+        .floor-3 .floor-header { background: var(--floor3-bg); color: #e65100; }
+        .floor-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+        .floor-1 .floor-badge { background: #1565c0; }
+        .floor-2 .floor-badge { background: #2e7d32; }
+        .floor-3 .floor-badge { background: #e65100; }
+
+        /* ===== 日历表格区域 ===== */
+        .calendar-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .calendar-table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+        }
+        .calendar-table th,
+        .calendar-table td {
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        /* 固定列（房间名） */
+        .calendar-table th:first-child,
+        .calendar-table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: var(--card-bg);
+            min-width: 70px;
+            font-weight: 600;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+        }
+        .calendar-table th:first-child {
+            z-index: 20;
+            background: #fafafa;
+        }
+        /* 表头日期 */
+        .calendar-table th {
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: #fafafa;
+            min-width: 36px;
+        }
+        .calendar-table th.weekend {
+            color: var(--booked);
+            background: #fff8f8;
+        }
+        .calendar-table th.today-header {
+            background: #fff3e0;
+            color: var(--today);
+            font-weight: 700;
+        }
+        /* 日期数字 */
+        .day-num {
+            display: block;
+            font-size: 13px;
+        }
+        .day-week {
+            display: block;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        /* 单元格 */
+        .calendar-table td {
+            height: 44px;
+            min-width: 36px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
+            padding: 2px;
+        }
+        .calendar-table td:hover {
+            transform: scale(1.05);
+            z-index: 5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .calendar-table td:first-child:hover {
+            transform: none;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+        }
+        /* 状态颜色 */
+        .cell-free { background: #e8f5e9; }
+        .cell-booked { background: #ffebee; color: var(--booked); font-weight: 600; font-size: 12px; }
+        .cell-past { background: #eeeeee; color: #9e9e9e; cursor: default !important; }
+        .cell-past:hover { transform: none; box-shadow: none; }
+        .cell-today { background: #fff3e0; position: relative; }
+        .cell-today::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--today);
+        }
+        .cell-today.cell-booked { background: #ffccbc; }
+        .cell-today.cell-booked::after { background: #fff; }
+
+        /* 姓名缩写 */
+        .guest-name {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        /* ===== Tooltip ===== */
+        .tooltip {
+            position: fixed;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 260px;
+            line-height: 1.6;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .tooltip.show { opacity: 1; }
+        .tooltip-title { font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+        .tooltip-row { color: #e0e0e0; }
+
+        /* ===== 弹窗 ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .modal-overlay.active .modal { transform: translateY(0); }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 17px; font-weight: 600; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background: #f0f0f0; }
+        .modal-body { padding: 16px 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+        .modal-footer {
+            padding: 12px 20px 16px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            font-family: inherit;
+            font-weight: 500;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #2196f3; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-secondary { background: #f0f0f0; color: var(--text-main); }
+        .btn:hover { opacity: 0.85; }
+        .btn-delete { margin-right: auto; }
+
+        /* 冲突提示 */
+        .conflict-msg {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .conflict-msg.show { display: block; }
+
+        /* 房间房型标签 */
+        .room-type-tag {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+        .room-type-tag.big {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .room-type-tag.double {
+            background: #fce4ec;
+            color: #c62828;
+        }
+
+        /* 房型图例 */
+        .room-legend {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        /* Toast 通知 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: toastIn 0.3s ease-out;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.success { background: #4caf50; }
+        .toast.error { background: #f44336; }
+        .toast.info { background: #2196f3; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+            to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        }
+
+        /* 删除确认弹窗 */
+        .confirm-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-overlay.active { display: flex; }
+        .confirm-box {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 320px;
+            text-align: center;
+            animation: confirmIn 0.2s ease-out;
+        }
+        @keyframes confirmIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .confirm-box h4 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .confirm-box p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .confirm-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 10px 12px; }
+            .header h1 { font-size: 16px; }
+            .stats-bar { gap: 10px; }
+            .stat-item { font-size: 12px; }
+            .container { padding: 8px; }
+            .floor-header { padding: 10px 12px; font-size: 14px; }
+            .calendar-table th:first-child,
+            .calendar-table td:first-child { min-width: 60px; font-size: 13px; }
+            .calendar-table th { min-width: 32px; padding: 6px 2px; }
+            .calendar-table td { height: 40px; min-width: 32px; }
+            .day-num { font-size: 12px; }
+            .day-week { font-size: 9px; }
+            .modal { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航与统计 -->
+    <div class="header">
+        <div class="header-top">
+            <h1>🌸 林花满如院入住排期</h1>
+            <div class="month-nav">
+                <button onclick="changeMonth(-1)" title="上个月">◀</button>
+                <span class="current-month" id="currentMonth"></span>
+                <button onclick="changeMonth(1)" title="下个月">▶</button>
+                <button class="btn-today" onclick="goToToday()">今天</button>
+                <button class="btn-clear" onclick="clearAllData()">清空</button>
+                <button class="btn-export" onclick="exportData()">📤 导出</button>
+                <button class="btn-import" onclick="document.getElementById('importFile').click()">📥 导入</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
+        </div>
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item">
+                <span class="stat-dot free"></span>
+                空闲 <span class="stat-value" id="statFree">0</span> 天
+            </div>
+            <div class="stat-item">
+                <span class="stat-dot booked"></span>
+                已预订 <span class="stat-value" id="statBooked">0</span> 天
+            </div>
+            <div class="stat-item">
+                <span class="stat-dot past"></span>
+                已过期 <span class="stat-value" id="statPast">0</span> 天
+            </div>
+            <div class="stat-item">
+                <span class="stat-dot today"></span>
+                今日
+            </div>
+        </div>
+    </div>
+
+        <!-- 房型图例 -->
+        <div class="room-legend" style="padding: 4px 16px 8px;">
+            <div class="legend-item">
+                <span class="room-type-tag big">大床</span>
+                <span>大床房</span>
+            </div>
+            <div class="legend-item">
+                <span class="room-type-tag double">双床</span>
+                <span>双床房</span>
+            </div>
+        </div>
+    <div class="container" id="mainContainer">
+        <!-- 动态生成楼层卡片 -->
+    </div>
+
+    <!-- Toast 通知容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 删除确认弹窗（替代原生 confirm） -->
+    <div class="confirm-overlay" id="confirmOverlay" onclick="if(event.target===this)closeConfirm()">
+        <div class="confirm-box">
+            <h4>⚠️ 确认删除</h4>
+            <p>确定要删除这条预订记录吗？此操作不可恢复。</p>
+            <div class="confirm-buttons">
+                <button class="btn btn-secondary" onclick="closeConfirm()">取消</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- 预订弹窗 -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">新增预订</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="conflict-msg" id="conflictMsg">
+                    ⚠️ 该日期范围与已有预订冲突，请选择其他日期。
+                </div>
+                <div class="form-group">
+                    <label>房间</label>
+                    <input type="text" id="formRoom" readonly>
+                    <div id="formRoomType" style="margin-top:4px;"></div>
+                </div>
+                <div class="form-group">
+                    <label>客人姓名</label>
+                    <input type="text" id="formName" placeholder="请输入客人姓名" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input type="tel" id="formPhone" placeholder="请输入手机号" maxlength="11">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>入住日期</label>
+                        <input type="date" id="formCheckIn">
+                    </div>
+                    <div class="form-group">
+                        <label>退房日期</label>
+                        <input type="date" id="formCheckOut">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>已收金额（定金/全款，选填）</label>
+                    <input type="number" id="formDeposit" placeholder="0" min="0" step="0.01">
+                </div>
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveBooking()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================
+        // 配置与数据
+        // ========================
+
+        // 楼层与房间配置
+        const FLOOR_CONFIG = [
+            { floor: 1, rooms: ['8101', '8102', '8103'], className: 'floor-1' },
+            { floor: 2, rooms: ['8201', '8202', '8203'], className: 'floor-2' },
+            { floor: 3, rooms: ['8301', '8302', '8303'], className: 'floor-3' }
+        ];
+
+        // 星期名称
+        const WEEK_DAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+        // 房间类型配置（大床/双床）
+        const ROOM_TYPES = {
+            '8101': '大床', '8102': '大床', '8103': '双床',
+            '8201': '大床', '8202': '大床', '8203': '双床',
+            '8301': '大床', '8302': '大床', '8303': '双床'
+        };
+
+        // 获取房型标签HTML
+        function getRoomTypeTag(room) {
+            const type = ROOM_TYPES[room];
+            if (!type) return '';
+            const className = type === '大床' ? 'big' : 'double';
+            return `<span class="room-type-tag ${className}">${type}</span>`;
+        }
+        let currentDate = new Date();          // 当前显示的月份
+        let bookings = [];                     // 预订数据数组
+        let editingId = null;                  // 当前编辑的预订ID
+        let selectedRoom = null;               // 当前选中的房间
+        let selectedDate = null;               // 当前选中的日期
+
+        // ========================
+        // localStorage 数据持久化
+        // ========================
+
+        const STORAGE_KEY = 'bookingData';
+
+        // 从 localStorage 读取数据
+        function loadData() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    bookings = JSON.parse(data);
+                    // 数据校验：确保每个预订有 id
+                    bookings.forEach(b => {
+                        if (!b.id) b.id = generateId();
+                    });
+                }
+            } catch (e) {
+                console.error('读取数据失败:', e);
+                bookings = [];
+            }
+        }
+
+        // 保存数据到 localStorage
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+            } catch (e) {
+                console.error('保存数据失败:', e);
+                alert('数据保存失败，请检查浏览器存储空间');
+            }
+        }
+
+        // 生成唯一ID
+        function generateId() {
+            return 'bk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // ========================
+        // 日期工具函数
+        // ========================
+
+        // 格式化日期为 YYYY-MM-DD
+        function formatDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 解析日期字符串为 Date 对象
+        function parseDate(str) {
+            const [y, m, d] = str.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        // 获取某月的天数
+        function getDaysInMonth(year, month) {
+            return new Date(year, month + 1, 0).getDate();
+        }
+
+        // 判断是否是今天
+        function isToday(date) {
+            const now = new Date();
+            return date.getFullYear() === now.getFullYear() &&
+                   date.getMonth() === now.getMonth() &&
+                   date.getDate() === now.getDate();
+        }
+
+        // 判断日期是否在今天之前（过期）
+        function isPast(date) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return date < today;
+        }
+
+        // 判断某个日期是否属于某预订（含入住日期，不含退房日期）
+        function isDateInBooking(dateStr, booking) {
+            const d = parseDate(dateStr);
+            const checkIn = parseDate(booking.checkIn);
+            const checkOut = parseDate(booking.checkOut);
+            return d >= checkIn && d < checkOut;
+        }
+
+        // 获取日期在当月中的状态
+        function getCellState(room, dateStr) {
+            const date = parseDate(dateStr);
+            // 查找该日期该房间的预订
+            const booking = bookings.find(b =>
+                b.room === room && isDateInBooking(dateStr, b)
+            );
+            if (booking) return { type: 'booked', booking };
+            if (isPast(date)) return { type: 'past', booking: null };
+            if (isToday(date)) return { type: 'today', booking: null };
+            return { type: 'free', booking: null };
+        }
+
+        // ========================
+        // 冲突检测
+        // ========================
+
+        // 检测两个预订是否冲突（不包括编辑中的预订本身）
+        function hasConflict(room, checkIn, checkOut, excludeId) {
+            const newIn = parseDate(checkIn);
+            const newOut = parseDate(checkOut);
+            // 新预订范围: [newIn, newOut)
+            for (const b of bookings) {
+                if (b.room !== room) continue;
+                if (excludeId && b.id === excludeId) continue;
+                const bIn = parseDate(b.checkIn);
+                const bOut = parseDate(b.checkOut);
+                // 冲突条件：两个区间有重叠
+                // [a, b) 与 [c, d) 重叠 <=> a < d && c < b
+                if (newIn < bOut && bIn < newOut) {
+                    return b;
+                }
+            }
+            return null;
+        }
+
+        // ========================
+        // 渲染日历
+        // ========================
+
+        // 渲染整个页面
+        function render() {
+            renderHeader();
+            renderFloors();
+            updateStats();
+        }
+
+        // 渲染顶部月份显示
+        function renderHeader() {
+            const y = currentDate.getFullYear();
+            const m = currentDate.getMonth() + 1;
+            document.getElementById('currentMonth').textContent = `${y}年${m}月`;
+        }
+
+        // 渲染楼层卡片
+        function renderFloors() {
+            const container = document.getElementById('mainContainer');
+            container.innerHTML = '';
+
+            FLOOR_CONFIG.forEach(floor => {
+                const card = document.createElement('div');
+                card.className = `floor-card ${floor.className}`;
+
+                // 楼层头部
+                const header = document.createElement('div');
+                header.className = 'floor-header';
+                header.innerHTML = `
+                    <span class="floor-badge">${floor.floor}</span>
+                    <span>${floor.floor}楼</span>
+                    <span style="margin-left:auto;font-size:13px;font-weight:400;color:var(--text-secondary);">
+                        ${floor.rooms.filter(r => ROOM_TYPES[r] === '大床').length}大床 ${floor.rooms.filter(r => ROOM_TYPES[r] === '双床').length}双床
+                    </span>
+                `;
+                card.appendChild(header);
+
+                // 日历区域
+                const wrapper = document.createElement('div');
+                wrapper.className = 'calendar-wrapper';
+                const table = buildCalendarTable(floor.rooms);
+                wrapper.appendChild(table);
+                card.appendChild(wrapper);
+
+                container.appendChild(card);
+            });
+        }
+
+        // 构建日历表格
+        function buildCalendarTable(rooms) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const daysInMonth = getDaysInMonth(year, month);
+
+            const table = document.createElement('table');
+            table.className = 'calendar-table';
+
+            // 表头：日期行
+            const thead = document.createElement('thead');
+            const trHead = document.createElement('tr');
+
+            // 固定列头
+            const thRoom = document.createElement('th');
+            thRoom.textContent = '房间';
+            trHead.appendChild(thRoom);
+
+            // 日期列头
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(year, month, d);
+                const th = document.createElement('th');
+                const dayOfWeek = date.getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                const isTodayDate = isToday(date);
+
+                if (isWeekend) th.classList.add('weekend');
+                if (isTodayDate) th.classList.add('today-header');
+
+                th.innerHTML = `
+                    <span class="day-num">${d}</span>
+                    <span class="day-week">${WEEK_DAYS[dayOfWeek]}</span>
+                `;
+                trHead.appendChild(th);
+            }
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            // 表体：每个房间一行
+            const tbody = document.createElement('tbody');
+            rooms.forEach(room => {
+                const tr = document.createElement('tr');
+
+                // 房间名单元格（包含房型标签）
+                const tdRoom = document.createElement('td');
+                tdRoom.innerHTML = `
+                    <div>${room}</div>
+                    ${getRoomTypeTag(room)}
+                `;
+                tr.appendChild(tdRoom);
+
+                // 日期单元格
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const state = getCellState(room, dateStr);
+
+                    const td = document.createElement('td');
+                    td.dataset.room = room;
+                    td.dataset.date = dateStr;
+
+                    // 设置单元格样式和事件
+                    td.className = `cell-${state.type}`;
+
+                    if (state.type === 'booked' && state.booking) {
+                        td.innerHTML = `<span class="guest-name">${state.booking.guestName.charAt(0)}</span>`;
+                        td.dataset.bookingId = state.booking.id;
+                        // 悬停显示 tooltip
+                        td.addEventListener('mouseenter', (e) => showTooltip(e, state.booking));
+                        td.addEventListener('mouseleave', hideTooltip);
+                        // 点击编辑
+                        td.addEventListener('click', () => openEditModal(state.booking));
+                    } else if (state.type !== 'past') {
+                        // 空闲或今天，点击新增预订
+                        td.addEventListener('click', () => openAddModal(room, dateStr));
+                    }
+
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            return table;
+        }
+
+        // ========================
+        // 统计面板
+        // ========================
+
+        function updateStats() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const daysInMonth = getDaysInMonth(year, month);
+            let freeDays = 0, bookedDays = 0, pastDays = 0;
+
+            FLOOR_CONFIG.forEach(floor => {
+                floor.rooms.forEach(room => {
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const state = getCellState(room, dateStr);
+                        if (state.type === 'booked') bookedDays++;
+                        else if (state.type === 'past') pastDays++;
+                        else freeDays++;
+                    }
+                });
+            });
+
+            document.getElementById('statFree').textContent = freeDays;
+            document.getElementById('statBooked').textContent = bookedDays;
+            document.getElementById('statPast').textContent = pastDays;
+        }
+
+        // ========================
+        // 月份切换
+        // ========================
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            render();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            render();
+        }
+
+        // ========================
+        // Tooltip
+        // ========================
+
+        const tooltip = document.getElementById('tooltip');
+
+        function showTooltip(e, booking) {
+            const depositHtml = booking.deposit && booking.deposit > 0
+                ? `<div class="tooltip-row">💰 已收 ¥${booking.deposit}</div>`
+                : '';
+            tooltip.innerHTML = `
+                <div class="tooltip-title">${escapeHtml(booking.guestName)}</div>
+                <div class="tooltip-row">📱 ${escapeHtml(booking.guestPhone)}</div>
+                <div class="tooltip-row">📅 ${booking.checkIn} 至 ${booking.checkOut}</div>
+                <div class="tooltip-row">🏠 ${booking.room}房 ${getRoomTypeTag(booking.room)}</div>
+                ${depositHtml}
+            `;
+            tooltip.classList.add('show');
+            positionTooltip(e);
+        }
+
+        function positionTooltip(e) {
+            const x = e.clientX + 12;
+            const y = e.clientY + 12;
+            // 边界检查，防止超出屏幕
+            const rect = tooltip.getBoundingClientRect();
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+            let finalX = x;
+            let finalY = y;
+            if (finalX + rect.width > winW) finalX = e.clientX - rect.width - 8;
+            if (finalY + rect.height > winH) finalY = e.clientY - rect.height - 8;
+            tooltip.style.left = finalX + 'px';
+            tooltip.style.top = finalY + 'px';
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('show');
+        }
+
+        // ========================
+        // 弹窗操作
+        // ========================
+
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const formRoom = document.getElementById('formRoom');
+        const formName = document.getElementById('formName');
+        const formPhone = document.getElementById('formPhone');
+        const formCheckIn = document.getElementById('formCheckIn');
+        const formCheckOut = document.getElementById('formCheckOut');
+        const formDeposit = document.getElementById('formDeposit');
+        const modalFooter = document.getElementById('modalFooter');
+        const conflictMsg = document.getElementById('conflictMsg');
+        const toastContainer = document.getElementById('toastContainer');
+        const confirmOverlay = document.getElementById('confirmOverlay');
+
+        // 打开新增预订弹窗
+        function openAddModal(room, dateStr) {
+            editingId = null;
+            selectedRoom = room;
+            selectedDate = dateStr;
+            modalTitle.textContent = '新增预订';
+            formRoom.value = room;
+            document.getElementById('formRoomType').innerHTML = getRoomTypeTag(room);
+            formName.value = '';
+            formPhone.value = '';
+            formDeposit.value = '';
+            formCheckIn.value = dateStr;
+            formCheckOut.value = dateStr;
+            conflictMsg.classList.remove('show');
+            modalFooter.innerHTML = `
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveBooking()">保存</button>
+            `;
+            modalOverlay.classList.add('active');
+        }
+
+        // 打开编辑预订弹窗
+        function openEditModal(booking) {
+            editingId = booking.id;
+            selectedRoom = booking.room;
+            modalTitle.textContent = '编辑预订';
+            formRoom.value = booking.room;
+            document.getElementById('formRoomType').innerHTML = getRoomTypeTag(booking.room);
+            formName.value = booking.guestName;
+            formPhone.value = booking.guestPhone;
+            formDeposit.value = booking.deposit || '';
+            formCheckIn.value = booking.checkIn;
+            formCheckOut.value = booking.checkOut;
+            conflictMsg.classList.remove('show');
+            modalFooter.innerHTML = `
+                <button class="btn btn-danger btn-delete" onclick="showDeleteConfirm()">删除</button>
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveBooking()">保存</button>
+            `;
+            modalOverlay.classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== modalOverlay) return;
+            modalOverlay.classList.remove('active');
+            editingId = null;
+            selectedRoom = null;
+            selectedDate = null;
+        }
+
+        // 保存预订（新增或编辑）
+        function saveBooking() {
+            const room = formRoom.value.trim();
+            const guestName = formName.value.trim();
+            const guestPhone = formPhone.value.trim();
+            const deposit = parseFloat(formDeposit.value) || 0;
+            const checkIn = formCheckIn.value;
+            const checkOut = formCheckOut.value;
+
+            // 基本校验
+            if (!guestName) { alert('请输入客人姓名'); return; }
+            if (!guestPhone) { alert('请输入手机号'); return; }
+            if (!checkIn || !checkOut) { alert('请选择入住和退房日期'); return; }
+            if (parseDate(checkIn) >= parseDate(checkOut)) {
+                alert('退房日期必须晚于入住日期');
+                return;
+            }
+
+            // 冲突检测
+            const conflict = hasConflict(room, checkIn, checkOut, editingId);
+            if (conflict) {
+                conflictMsg.classList.add('show');
+                return;
+            }
+
+            if (editingId) {
+                // 编辑：更新已有预订
+                const idx = bookings.findIndex(b => b.id === editingId);
+                if (idx !== -1) {
+                    bookings[idx] = { id: editingId, room, guestName, guestPhone, checkIn, checkOut, deposit };
+                }
+            } else {
+                // 新增
+                bookings.push({
+                    id: generateId(),
+                    room,
+                    guestName,
+                    guestPhone,
+                    checkIn,
+                    checkOut,
+                    deposit
+                });
+            }
+
+            const isEdit = !!editingId;
+            saveData();
+            closeModal();
+            render();
+            showToast(isEdit ? '预订已更新' : '预订已添加', 'success');
+        }
+
+        // ========================
+        // Toast 通知系统（替代原生 confirm）
+        // ========================
+
+        // 显示 Toast 通知
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
+            toast.innerHTML = `<span>${icon}</span><span>${escapeHtml(message)}</span>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'toastOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // 删除确认 - 记录待删除ID
+        let pendingDeleteId = null;
+
+        // 显示删除确认弹窗
+        function showDeleteConfirm() {
+            if (!editingId) {
+                showToast('没有可删除的预订记录', 'error');
+                return;
+            }
+            pendingDeleteId = editingId;
+            confirmOverlay.classList.add('active');
+        }
+
+        // 关闭删除确认弹窗
+        function closeConfirm() {
+            confirmOverlay.classList.remove('active');
+            pendingDeleteId = null;
+        }
+
+        // 执行删除（由确认弹窗的【删除】按钮触发）
+        function confirmDelete() {
+            if (!pendingDeleteId) {
+                showToast('删除失败：找不到预订记录', 'error');
+                closeConfirm();
+                return;
+            }
+            const beforeCount = bookings.length;
+            bookings = bookings.filter(b => b.id !== pendingDeleteId);
+            if (bookings.length < beforeCount) {
+                saveData();
+                closeModal();
+                render();
+                showToast('✓ 预订已删除', 'success');
+            } else {
+                showToast('删除失败，未找到匹配的预订记录', 'error');
+            }
+            closeConfirm();
+        }
+
+        // 清空所有数据
+        function clearAllData() {
+            if (!confirm('⚠️ 确定要清空所有预订数据吗？此操作不可恢复！')) return;
+            if (!confirm('再次确认：真的要删除所有数据吗？')) return;
+            bookings = [];
+            saveData();
+            render();
+            showToast('所有数据已清空', 'success');
+        }
+
+        // ========================
+        // 导出 / 导入数据
+        // ========================
+
+        // 导出数据为 JSON 文件
+        function exportData() {
+            const data = JSON.stringify(bookings, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `民宿预订数据_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('数据已导出', 'success');
+        }
+
+        // 从 JSON 文件导入数据
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+
+                    // 校验数据格式
+                    if (!Array.isArray(imported)) {
+                        showToast('导入失败：文件格式不正确（需要数组格式）', 'error');
+                        return;
+                    }
+
+                    // 校验每条记录的关键字段
+                    const valid = imported.every(b =>
+                        b && b.room && b.guestName && b.checkIn && b.checkOut && b.id
+                    );
+                    if (!valid) {
+                        showToast('导入失败：部分预订记录缺少必要字段', 'error');
+                        return;
+                    }
+
+                    // 导入数据前备份旧数据（用于提示）
+                    const oldCount = bookings.length;
+
+                    // 合并：避免重复 id，新导入的覆盖已有的
+                    const existingIds = new Set(bookings.map(b => b.id));
+                    let added = 0, updated = 0;
+
+                    imported.forEach(b => {
+                        if (existingIds.has(b.id)) {
+                            // 更新已有记录
+                            const idx = bookings.findIndex(x => x.id === b.id);
+                            if (idx >= 0) bookings[idx] = b;
+                            updated++;
+                        } else {
+                            // 新增记录
+                            bookings.push(b);
+                            existingIds.add(b.id);
+                            added++;
+                        }
+                    });
+
+                    saveData();
+                    render();
+                    showToast(`导入完成：新增 ${added} 条，更新 ${updated} 条`, 'success');
+
+                    // 清空 input 以便重复导入同一文件
+                    event.target.value = '';
+                } catch (err) {
+                    showToast('导入失败：JSON 解析错误 — ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ========================
+        // 工具函数
+        // ========================
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========================
+        // 初始化
+        // ========================
+
+        // 页面加载时读取数据并渲染
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            render();
+        });
+
+        // 监听 ESC 键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

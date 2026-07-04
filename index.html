@@ -526,10 +526,116 @@
             .day-week { font-size: 9px; }
             .modal { width: 95%; }
         }
+
+        /* ===== 密码登录遮罩 ===== */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 90%;
+            max-width: 360px;
+        }
+        .login-box h2 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        .login-box p {
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .login-box input[type="password"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 16px;
+            transition: border-color 0.3s;
+        }
+        .login-box input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .login-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .login-error {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: 12px;
+            display: none;
+        }
+        .app-content { display: none; }
     </style>
 </head>
 <body>
+    <!-- 密码登录遮罩 -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h2>🌸 林花满如院</h2>
+            <p>请输入访问密码</p>
+            <input type="password" id="passwordInput" placeholder="请输入密码" onkeypress="if(event.key==='Enter')checkPassword()">
+            <button onclick="checkPassword()">进入系统</button>
+            <div class="login-error" id="loginError">密码错误，请重试</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 密码保护 =====
+        // TODO: 请修改为您的访问密码
+        const ACCESS_PASSWORD = '123456';
+        
+        function checkPassword() {
+            const input = document.getElementById('passwordInput').value;
+            if (input === ACCESS_PASSWORD) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.querySelector('.app-content').style.display = 'block';
+                sessionStorage.setItem('linhua_auth', '1');
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+        
+        // 页面加载时检查是否已验证
+        if (sessionStorage.getItem('linhua_auth') === '1') {
+            document.getElementById('loginOverlay').style.display = 'none';
+        } else {
+            document.querySelector('.app-content').style.display = 'none';
+        }
+    </script>
+
     <!-- 顶部导航与统计 -->
+    <div class="app-content">
     <div class="header">
         <div class="header-top">
             <h1>🌸 林花满如院入住排期</h1>
@@ -1303,5 +1409,6 @@
             }
         });
     </script>
+</div>
 </body>
 </html>

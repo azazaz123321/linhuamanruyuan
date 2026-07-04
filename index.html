@@ -738,19 +738,22 @@
 
             <!-- 重置所有数据按钮 -->
             <button class="btn-reset-all" onclick="confirmResetAll()">🔄 重置所有数据</button>
+            <button class="btn-reset-all" onclick="testRegLogin()" style="border-color:#667eea;color:#667eea;margin-top:8px;">🧪 运行自测</button>
         </div>
     </div>
 
     <script>
-    // ===== 用户认证系统 =====
-    // ★★★ 请按需修改注册密钥列表 ★★★
+    // ============================================================================
+    // 用户认证系统 v2 — 完全重写，带完整日志和自测
+    // ============================================================================
+    // 注册密钥列表（请按需修改）
     var REG_KEYS = ['MINSHU2026', 'HUAYU888', 'LINHUA666'];
-    var LS_KEY_USERS = 'linhua_users';
-    var LS_KEY_CURR   = 'linhua_currentUser';
-    // ★★★ 排期数据键名（不要改动，不要与登录系统混淆） ★★★
-    // var LS_KEY_BOOKING = 'bookingData';  // 排期数据由排期模块自行管理
 
-    // ─── 工具函数 ───────────────────────────────
+    // localStorage 键名常量（集中管理，避免拼写错误）
+    var LS_KEY_USERS = 'linhua_users';       // 用户账号数组
+    var LS_KEY_CURR  = 'linhua_currentUser'; // 当前登录用户名
+
+    // ─── 界面切换工具 ─────────────────────────────────────────────────────────
     function showReg() {
         document.getElementById('loginForm').classList.remove('active');
         document.getElementById('regForm').classList.add('active');
@@ -769,177 +772,323 @@
             if (el) el.classList.remove('error');
         });
     }
-    // 读取 users 数组
+
+    // ─── 数据读写（唯一入口）───────────────────────────────────────────────────
     function getUsers() {
+        console.log('[getUsers] >>> 开始读取 users');
         try {
             var raw = localStorage.getItem(LS_KEY_USERS);
-            if (!raw) { console.log('[getUsers] localStorage 无数据，返回 []'); return []; }
+            console.log('[getUsers] raw from localStorage:', raw === null ? 'null' : raw.substring(0, 200));
+            if (!raw) {
+                console.log('[getUsers] localStorage 无数据，返回 []');
+                return [];
+            }
             var parsed = JSON.parse(raw);
             if (!Array.isArray(parsed)) {
-                console.warn('[getUsers] 数据格式错误（非数组），重置为 []');
+                console.warn('[getUsers] 数据格式错误（非数组）:', typeof parsed);
                 localStorage.setItem(LS_KEY_USERS, '[]');
                 return [];
             }
-            console.log('[getUsers] 读取到', parsed.length, '个用户:', JSON.stringify(parsed));
+            console.log('[getUsers] 读取成功，共', parsed.length, '个用户:', JSON.stringify(parsed));
             return parsed;
         } catch(e) {
-            console.error('[getUsers] 读取出错:', e.message, '，重置为 []');
+            console.error('[getUsers] 解析失败:', e.message);
             localStorage.setItem(LS_KEY_USERS, '[]');
             return [];
         }
     }
-    // 保存 users 数组（唯一写入入口）
+
     function saveUsers(users) {
+        console.log('[saveUsers] >>> 开始保存，users:', JSON.stringify(users));
         try {
-            localStorage.setItem(LS_KEY_USERS, JSON.stringify(users));
-            console.log('[saveUsers] 保存成功，当前 users:', JSON.stringify(users));
+            var json = JSON.stringify(users);
+            localStorage.setItem(LS_KEY_USERS, json);
+            console.log('[saveUsers] 保存成功，写入字节:', json.length);
         } catch(e) {
             console.error('[saveUsers] 保存失败:', e.message);
-            throw e;
+            throw new Error('无法写入 localStorage: ' + e.message);
         }
     }
 
-    // ─── 注册函数 ───────────────────────────────
+    // ─── 注册函数 ─────────────────────────────────────────────────────────────
     function doRegister() {
+        console.log('[doRegister] >>> ====================');
+        console.log('[doRegister] 开始注册流程');
         clearAuthErrors();
+
         var username = document.getElementById('regUsername').value.trim();
         var password = document.getElementById('regPassword').value;
         var password2 = document.getElementById('regPassword2').value;
         var secret = document.getElementById('regSecret').value;
         var err = document.getElementById('regErrorMsg');
-        console.log('[doRegister] 开始注册，用户名:', username);
 
-        // 第1步：前端校验
+        console.log('[doRegister] 输入: username="' + username + '", password.length=' + password.length);
+
+        // 校验
         if (!username) { err.textContent = '用户名不能为空'; return; }
         if (!password) { err.textContent = '密码不能为空'; return; }
         if (password !== password2) { err.textContent = '两次密码输入不一致'; return; }
-        if (REG_KEYS.indexOf(secret) === -1) { err.textContent = '注册密钥无效，请联系老板获取'; return; }
+        if (REG_KEYS.indexOf(secret) === -1) { err.textContent = '注册密钥无效'; return; }
 
-        // 第2步：读取现有用户
+        // 读取现有用户
         var users = getUsers();
-        console.log('[doRegister] 当前 users 数量:', users.length);
+        console.log('[doRegister] 读取到现有用户:', users.length, '个');
 
-        // 第3步：检查重复
+        // 检查重复
         var exists = users.some(function(u){ return u.username === username; });
-        console.log('[doRegister] 用户名重复检查:', exists);
-        if (exists) { err.textContent = '用户名已被注册'; return; }
+        if (exists) {
+            console.log('[doRegister] 用户名已存在:', username);
+            err.textContent = '用户名已被注册';
+            return;
+        }
 
-        // 第4步：写入 localStorage
-        users.push({ username: username, password: password });
-        console.log('[doRegister] 即将写入 users:', JSON.stringify(users));
+        // 添加新用户（明文存储，不加密）
+        var newUser = { username: username, password: password };
+        users.push(newUser);
+        console.log('[doRegister] 添加新用户后:', JSON.stringify(users));
+
+        // 保存到 localStorage
         try {
             saveUsers(users);
         } catch(e) {
+            console.error('[doRegister] saveUsers 抛出异常:', e.message);
             err.textContent = '注册失败：' + e.message;
             return;
         }
 
-        // 第5步：二次验证——从 localStorage 读出确认数据已持久化
+        // 二次验证：立即从 localStorage 读回确认
         var verify = getUsers();
-        var verified = verify.some(function(u){ return u.username === username; });
-        console.log('[doRegister] 二次验证结果:', verified, '| 验证后 users:', JSON.stringify(verify));
-        if (!verified) {
-            err.textContent = '注册失败：数据写入异常，请刷新页面后重试';
+        console.log('[doRegister] 二次验证，读回 users:', JSON.stringify(verify));
+        var found = verify.some(function(u){ return u.username === username && u.password === password; });
+        console.log('[doRegister] 二次验证结果:', found);
+
+        if (!found) {
+            console.error('[doRegister] ❌ 二次验证失败！数据未持久化');
+            err.textContent = '注册失败：数据写入异常，请重试';
             return;
         }
 
-        // 第6步：设置当前用户并进入主界面
+        // 设置当前登录状态
         localStorage.setItem(LS_KEY_CURR, username);
-        console.log('[doRegister] ✅ 注册成功，自动登录:', username);
+        console.log('[doRegister] ✅ 注册成功，已设置 currentUser:', username);
         enterApp(username);
     }
 
-    // ─── 登录函数 ───────────────────────────────
+    // ─── 登录函数 ─────────────────────────────────────────────────────────────
     function doLogin() {
+        console.log('[doLogin] >>> ====================');
+        console.log('[doLogin] 开始登录流程');
         clearAuthErrors();
+
         var username = document.getElementById('loginUsername').value.trim();
         var password = document.getElementById('loginPassword').value;
         var err = document.getElementById('loginErrorMsg');
-        console.log('[doLogin] 开始登录，用户名:', username);
+
+        console.log('[doLogin] 输入: username="' + username + '", password.length=' + password.length);
 
         if (!username) { err.textContent = '用户名不能为空'; return; }
         if (!password) { err.textContent = '密码不能为空'; return; }
 
-        // 严格读取并查找
+        // 读取 users
         var users = getUsers();
-        console.log('[doLogin] 开始遍历 users，查找:', username);
+        console.log('[doLogin] 读取到 users 数组:', JSON.stringify(users));
+
+        // 查找匹配（明文比对，不加密）
         var user = null;
         for (var i = 0; i < users.length; i++) {
             var u = users[i];
-            console.log('[doLogin] 比对第', i, '个:', u.username, '| 密码匹配:', u.password === password);
-            if (u.username === username && u.password === password) {
+            var nameMatch = u.username === username;
+            var passMatch = u.password === password;
+            console.log('[doLogin] 检查第', i, '个: username="' + u.username + '" 匹配:', nameMatch, '| password="' + u.password + '" 匹配:', passMatch);
+            if (nameMatch && passMatch) {
                 user = u;
                 break;
             }
         }
 
         if (!user) {
-            console.warn('[doLogin] ❌ 未找到匹配用户，当前 users:', JSON.stringify(users));
-            err.textContent = '用户名或密码错误（' + users.length + '个已注册用户）';
+            console.warn('[doLogin] ❌ 未找到匹配用户');
+            err.textContent = '用户名或密码错误';
             return;
         }
 
+        // 登录成功
         localStorage.setItem(LS_KEY_CURR, username);
         console.log('[doLogin] ✅ 登录成功:', username);
         enterApp(username);
     }
 
-    // ─── 注销函数 ───────────────────────────────
-    // ★★★ 注意：只清除 currentUser，绝不触动 users 和 bookingData ★★★
+    // ─── 注销函数 ─────────────────────────────────────────────────────────────
+    // ★★★ 安全警告：此函数只清除当前登录状态，绝不动 users 和 bookingData ★★★
     function logout() {
-        console.log('[logout] 注销，当前 users:', JSON.stringify(getUsers()));
-        localStorage.removeItem(LS_KEY_CURR);  // 仅清除登录状态
-        // 不动 users 数组、不动 bookingData
+        console.log('[logout] >>> 开始注销');
+        console.log('[logout] 注销前 users:', JSON.stringify(getUsers()));
+
+        localStorage.removeItem(LS_KEY_CURR);  // 仅清除登录状态，不动其他数据
+
+        console.log('[logout] currentUser 已清除');
+
+        // 显示登录界面
         document.getElementById('authOverlay').style.display = 'flex';
         document.getElementById('appContent').style.display = 'none';
         document.getElementById('loginUsername').value = '';
         document.getElementById('loginPassword').value = '';
         clearAuthErrors();
         showLogin();
+
         console.log('[logout] ✅ 已返回登录页');
     }
 
-    // ─── 进入主界面 ─────────────────────────────
+    // ─── 进入主界面 ───────────────────────────────────────────────────────────
     function enterApp(username) {
+        console.log('[enterApp] 进入主界面，用户:', username);
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('appContent').style.display = 'block';
         document.getElementById('userDisplayName').textContent = username;
-        console.log('[enterApp] ✅ 进入主界面，当前用户:', username);
     }
 
-    // ─── 重置所有数据（登录页专用）────────────────
+    // ─── 重置所有数据（登录页专用）────────────────────────────────────────────
     function confirmResetAll() {
-        if (!confirm('⚠️ 确定要重置所有数据吗？\n\n这将清除：\n- 所有用户账号\n- 所有预订记录\n- 登录状态\n\n此操作不可恢复！')) return;
-        console.log('[confirmResetAll] 用户确认，清空全部 localStorage');
+        if (!confirm('⚠️ 确定要重置所有数据吗？此操作不可恢复！')) return;
+        console.log('[confirmResetAll] 清空全部 localStorage');
         localStorage.clear();
-        alert('✅ 所有数据已清空，页面将刷新');
+        alert('所有数据已清空');
         location.reload();
     }
 
-    // ─── 初始化 ─────────────────────────────────
+    // ─── 初始化认证状态 ───────────────────────────────────────────────────────
+    // 必须在 DOM 加载完成后执行，否则 getElementById 找不到 appContent
     function initAuth() {
+        console.log('[initAuth] >>> 初始化认证');
         var currentUser = localStorage.getItem(LS_KEY_CURR);
-        console.log('[initAuth] 检查登录状态，currentUser:', currentUser);
+        console.log('[initAuth] currentUser:', currentUser);
+
         if (currentUser) {
-            // 验证 currentUser 是否在 users 中仍存在（用户可能被删了）
+            // 验证 currentUser 是否仍在 users 中
             var users = getUsers();
             var valid = users.some(function(u){ return u.username === currentUser; });
+            console.log('[initAuth] currentUser 有效性:', valid);
+
             if (valid) {
                 enterApp(currentUser);
             } else {
-                console.warn('[initAuth] currentUser 不在 users 中，清除登录状态');
+                console.warn('[initAuth] currentUser 无效，清除');
                 localStorage.removeItem(LS_KEY_CURR);
-                document.getElementById('authOverlay').style.display = 'flex';
-                document.getElementById('appContent').style.display = 'none';
-                showLogin();
+                showLoginState();
             }
         } else {
-            document.getElementById('authOverlay').style.display = 'flex';
-            document.getElementById('appContent').style.display = 'none';
-            showLogin();
+            showLoginState();
         }
     }
-    initAuth();
+
+    function showLoginState() {
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('appContent').style.display = 'none';
+        showLogin();
+    }
+
+    // ─── 自测函数 ─────────────────────────────────────────────────────────────
+    function testRegLogin() {
+        console.log('[testRegLogin] >>> 开始自测 ====================');
+
+        // 保存当前状态
+        var origUsers = localStorage.getItem(LS_KEY_USERS);
+        var origCurr = localStorage.getItem(LS_KEY_CURR);
+
+        // 清空测试环境
+        localStorage.removeItem(LS_KEY_USERS);
+        localStorage.removeItem(LS_KEY_CURR);
+        console.log('[testRegLogin] 已清空测试环境');
+
+        // 准备测试数据
+        var testUser = 'test001';
+        var testPass = '123456';
+        var testKey = REG_KEYS[0];
+
+        // 保存原始表单值
+        var origRegUser = document.getElementById('regUsername').value;
+        var origRegPass = document.getElementById('regPassword').value;
+        var origRegPass2 = document.getElementById('regPassword2').value;
+        var origRegSecret = document.getElementById('regSecret').value;
+        var origLoginUser = document.getElementById('loginUsername').value;
+        var origLoginPass = document.getElementById('loginPassword').value;
+
+        // 填入注册表单
+        document.getElementById('regUsername').value = testUser;
+        document.getElementById('regPassword').value = testPass;
+        document.getElementById('regPassword2').value = testPass;
+        document.getElementById('regSecret').value = testKey;
+
+        console.log('[testRegLogin] 注册表单已填入测试数据');
+
+        // 执行注册
+        doRegister();
+
+        // 检查结果
+        var usersAfterReg = getUsers();
+        var regSuccess = usersAfterReg.some(function(u){ return u.username === testUser; });
+        console.log('[testRegLogin] 注册后 users:', JSON.stringify(usersAfterReg));
+        console.log('[testRegLogin] 注册结果:', regSuccess ? '成功' : '失败');
+
+        // 模拟注销（只清 currentUser）
+        localStorage.removeItem(LS_KEY_CURR);
+        console.log('[testRegLogin] 已模拟注销（清除 currentUser）');
+
+        // 填入登录表单
+        document.getElementById('loginUsername').value = testUser;
+        document.getElementById('loginPassword').value = testPass;
+
+        console.log('[testRegLogin] 登录表单已填入测试数据');
+
+        // 执行登录
+        doLogin();
+
+        // 检查登录结果
+        var currAfterLogin = localStorage.getItem(LS_KEY_CURR);
+        var loginSuccess = (currAfterLogin === testUser);
+        console.log('[testRegLogin] 登录后 currentUser:', currAfterLogin);
+        console.log('[testRegLogin] 登录结果:', loginSuccess ? '成功' : '失败');
+
+        // 恢复原始表单值
+        document.getElementById('regUsername').value = origRegUser;
+        document.getElementById('regPassword').value = origRegPass;
+        document.getElementById('regPassword2').value = origRegPass2;
+        document.getElementById('regSecret').value = origRegSecret;
+        document.getElementById('loginUsername').value = origLoginUser;
+        document.getElementById('loginPassword').value = origLoginPass;
+
+        // 恢复原始 localStorage
+        if (origUsers !== null) localStorage.setItem(LS_KEY_USERS, origUsers);
+        else localStorage.removeItem(LS_KEY_USERS);
+        if (origCurr !== null) localStorage.setItem(LS_KEY_CURR, origCurr);
+        else localStorage.removeItem(LS_KEY_CURR);
+
+        console.log('[testRegLogin] 原始状态已恢复');
+
+        // 报告结果
+        var report = '===== 自测结果 =====\n\n';
+        report += '1. 注册后 users 中存在 test001：' + (regSuccess ? '✅ 是' : '❌ 否') + '\n';
+        report += '2. 登录结果：' + (loginSuccess ? '✅ 成功' : '❌ 失败') + '\n\n';
+
+        if (!regSuccess) {
+            report += '注册环节异常：请检查控制台 [doRegister] 日志';
+        } else if (!loginSuccess) {
+            report += '登录环节异常：请检查控制台 [doLogin] 日志\n';
+            report += '注册后 users 数组：' + JSON.stringify(usersAfterReg);
+        } else {
+            report += '✅ 全部通过！注册-登录闭环正常。';
+        }
+
+        console.log('[testRegLogin] >>> 自测结束 ====================');
+        alert(report);
+    }
+
+    // 在 DOM 加载完成后初始化认证
+    // 注意：此监听必须在日历的 DOMContentLoaded 之前注册，确保先执行
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[DOMContentLoaded] 认证模块初始化');
+        initAuth();
+    });
     </script>
 
     <!-- 顶部导航与统计 -->

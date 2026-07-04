@@ -682,6 +682,53 @@
         }
         /* 应用主体 */
         .app-content { display: none; }
+
+        /* ===== 数据修复提示条 ===== */
+        .data-restore-banner {
+            padding: 10px 16px;
+            font-size: 14px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 9998;
+            display: none;
+        }
+        .data-restore-banner.show { display: block; }
+        .data-restore-banner.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-bottom: 1px solid #ffeaa7;
+        }
+        .data-restore-banner.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-bottom: 1px solid #f5c6cb;
+        }
+
+        /* ===== 设置面板 ===== */
+        .settings-panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin: 16px auto;
+            padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            max-width: 1400px;
+        }
+        .settings-panel h4 {
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+        .settings-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .settings-row .backup-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -1093,6 +1140,9 @@
 
     <!-- 顶部导航与统计 -->
     <div id="appContent" class="app-content">
+    <!-- 数据修复提示条（自动显示/隐藏） -->
+    <div class="data-restore-banner" id="dataRestoreBanner"></div>
+
     <div class="header">
         <div class="header-top">
             <h1>🌸 林花满如院入住排期</h1>
@@ -1144,6 +1194,16 @@
         </div>
     <div class="container" id="mainContainer">
         <!-- 动态生成楼层卡片 -->
+    </div>
+
+    <!-- 数据备份与恢复设置面板 -->
+    <div class="settings-panel">
+        <h4>🔧 数据备份与恢复</h4>
+        <div class="settings-row">
+            <button class="btn btn-secondary" onclick="manualRestoreFromBackup()">📥 从备份恢复数据</button>
+            <button class="btn btn-secondary" onclick="forceBackupNow()">💾 立即备份</button>
+            <span class="backup-info" id="backupInfo">上次备份：加载中...</span>
+        </div>
     </div>
 
     <!-- Toast 通知容器 -->
@@ -1211,9 +1271,188 @@
     </div>
 
     <script>
-        // ========================
+        // ============================================================================
+        // 数据备份与损坏自动修复系统
+        // ============================================================================
+        const BACKUP_KEY_BOOKING = 'backup_bookingData';
+        const BACKUP_KEY_USERS   = 'backup_users';
+        const BACKUP_KEY_TIME    = 'backup_timestamp';
+        const BROKEN_PREFIX      = 'bookingData_broken_';
+        const LS_USERS_KEY       = 'linhua_users';
+
+        // ─── 显示提示条 ─────────────────────────────────────────────────────────
+        function showRestoreBanner(message, type) {
+            var banner = document.getElementById('dataRestoreBanner');
+            if (!banner) return;
+            banner.textContent = message;
+            banner.className = 'data-restore-banner ' + type + ' show';
+            // 10秒后自动隐藏（danger 类型不自动隐藏）
+            if (type !== 'danger') {
+                setTimeout(function() { banner.classList.remove('show'); }, 10000);
+            }
+        }
+
+        // ─── 更新设置面板备份信息 ───────────────────────────────────────────────
+        function updateBackupInfo() {
+            var info = document.getElementById('backupInfo');
+            if (!info) return;
+            var ts = localStorage.getItem(BACKUP_KEY_TIME);
+            if (ts) {
+                var d = new Date(parseInt(ts));
+                info.textContent = '上次备份：' + d.toLocaleString('zh-CN');
+            } else {
+                info.textContent = '上次备份：暂无';
+            }
+        }
+
+        // ─── 执行备份 ───────────────────────────────────────────────────────────
+        function doBackup() {
+            console.log('[doBackup] >>> 开始自动备份');
+            try {
+                // 备份 bookingData（先校验是否可解析）
+                var rawBooking = localStorage.getItem('bookingData');
+                if (rawBooking) {
+                    var parsed = JSON.parse(rawBooking);
+                    if (Array.isArray(parsed)) {
+                        localStorage.setItem(BACKUP_KEY_BOOKING, rawBooking);
+                        console.log('[doBackup] bookingData 已备份，条数:', parsed.length);
+                    } else {
+                        console.warn('[doBackup] bookingData 不是数组，跳过备份');
+                    }
+                } else {
+                    // 无数据时也记录空数组备份，表示"确认无数据"
+                    localStorage.setItem(BACKUP_KEY_BOOKING, '[]');
+                    console.log('[doBackup] bookingData 为空，已备份 []');
+                }
+
+                // 备份 users
+                var rawUsers = localStorage.getItem(LS_USERS_KEY);
+                if (rawUsers) {
+                    var parsedUsers = JSON.parse(rawUsers);
+                    if (Array.isArray(parsedUsers)) {
+                        localStorage.setItem(BACKUP_KEY_USERS, rawUsers);
+                        console.log('[doBackup] users 已备份，条数:', parsedUsers.length);
+                    }
+                } else {
+                    localStorage.setItem(BACKUP_KEY_USERS, '[]');
+                }
+
+                // 记录时间戳
+                var now = Date.now();
+                localStorage.setItem(BACKUP_KEY_TIME, String(now));
+                console.log('[doBackup] ✅ 备份完成，时间戳:', now);
+            } catch (e) {
+                console.error('[doBackup] 备份失败:', e.message);
+            }
+        }
+
+        // ─── 手动立即备份 ───────────────────────────────────────────────────────
+        function forceBackupNow() {
+            doBackup();
+            updateBackupInfo();
+            showToast('✅ 已手动备份当前数据', 'success');
+        }
+
+        // ─── 读取 bookingData（带损坏检测和自动修复）────────────────────────────
+        function loadBookingDataWithRepair() {
+            console.log('[loadBookingDataWithRepair] >>> 开始读取 bookingData');
+            var raw = localStorage.getItem('bookingData');
+
+            // 情况1：localStorage 中无数据
+            if (!raw) {
+                console.log('[loadBookingDataWithRepair] bookingData 不存在，初始化为 []');
+                return [];
+            }
+
+            // 情况2：尝试解析
+            var parsed;
+            try {
+                parsed = JSON.parse(raw);
+            } catch (e) {
+                console.error('[loadBookingDataWithRepair] JSON 解析失败:', e.message);
+                // 保存损坏数据副本
+                var brokenKey = BROKEN_PREFIX + Date.now();
+                localStorage.setItem(brokenKey, raw);
+                console.log('[loadBookingDataWithRepair] 损坏数据已保存到:', brokenKey);
+
+                // 尝试从备份恢复
+                var backupRaw = localStorage.getItem(BACKUP_KEY_BOOKING);
+                if (backupRaw) {
+                    try {
+                        var backupParsed = JSON.parse(backupRaw);
+                        if (Array.isArray(backupParsed)) {
+                            showRestoreBanner('检测到数据异常，已自动从备份恢复。如有订单丢失，请联系技术支持。', 'warning');
+                            console.log('[loadBookingDataWithRepair] ✅ 已从备份恢复，条数:', backupParsed.length);
+                            return backupParsed;
+                        }
+                    } catch (be) {
+                        console.error('[loadBookingDataWithRepair] 备份也损坏:', be.message);
+                    }
+                }
+
+                // 备份也不可用，初始化为空数组
+                showRestoreBanner('⚠️ 数据已损坏且备份不可用，已初始化为空。请联系技术支持！', 'danger');
+                console.warn('[loadBookingDataWithRepair] ❌ 备份不可用，返回 []');
+                return [];
+            }
+
+            // 情况3：解析成功但格式不对（不是数组）
+            if (!Array.isArray(parsed)) {
+                console.warn('[loadBookingDataWithRepair] 解析成功但不是数组:', typeof parsed);
+                var brokenKey2 = BROKEN_PREFIX + Date.now();
+                localStorage.setItem(brokenKey2, raw);
+
+                var backupRaw2 = localStorage.getItem(BACKUP_KEY_BOOKING);
+                if (backupRaw2) {
+                    try {
+                        var backupParsed2 = JSON.parse(backupRaw2);
+                        if (Array.isArray(backupParsed2)) {
+                            showRestoreBanner('检测到数据格式异常，已自动从备份恢复。如有订单丢失，请联系技术支持。', 'warning');
+                            console.log('[loadBookingDataWithRepair] ✅ 已从备份恢复（格式异常），条数:', backupParsed2.length);
+                            return backupParsed2;
+                        }
+                    } catch (be2) {
+                        console.error('[loadBookingDataWithRepair] 备份也损坏:', be2.message);
+                    }
+                }
+
+                showRestoreBanner('⚠️ 数据格式异常且备份不可用，已初始化为空。请联系技术支持！', 'danger');
+                return [];
+            }
+
+            // 情况4：数据正常
+            console.log('[loadBookingDataWithRepair] ✅ 数据正常，条数:', parsed.length);
+            return parsed;
+        }
+
+        // ─── 手动从备份恢复 ─────────────────────────────────────────────────────
+        function manualRestoreFromBackup() {
+            if (!confirm('确定要从备份恢复数据吗？\n\n这将用备份数据覆盖当前所有预订记录和用户信息。\n当前未备份的数据将会丢失！')) {
+                return;
+            }
+            console.log('[manualRestoreFromBackup] >>> 用户确认手动恢复');
+
+            // 恢复 bookingData
+            var backupBooking = localStorage.getItem(BACKUP_KEY_BOOKING);
+            if (backupBooking) {
+                localStorage.setItem('bookingData', backupBooking);
+                console.log('[manualRestoreFromBackup] bookingData 已恢复');
+            }
+
+            // 恢复 users
+            var backupUsers = localStorage.getItem(BACKUP_KEY_USERS);
+            if (backupUsers) {
+                localStorage.setItem(LS_USERS_KEY, backupUsers);
+                console.log('[manualRestoreFromBackup] users 已恢复');
+            }
+
+            showToast('✅ 已从备份恢复，页面即将刷新', 'success');
+            setTimeout(function() { location.reload(); }, 1200);
+        }
+
+        // ============================================================================
         // 配置与数据
-        // ========================
+        // ============================================================================
 
         // 楼层与房间配置
         const FLOOR_CONFIG = [
@@ -1251,21 +1490,14 @@
 
         const STORAGE_KEY = 'bookingData';
 
-        // 从 localStorage 读取数据
+        // 从 localStorage 读取数据（带损坏自动修复）
         function loadData() {
-            try {
-                const data = localStorage.getItem(STORAGE_KEY);
-                if (data) {
-                    bookings = JSON.parse(data);
-                    // 数据校验：确保每个预订有 id
-                    bookings.forEach(b => {
-                        if (!b.id) b.id = generateId();
-                    });
-                }
-            } catch (e) {
-                console.error('读取数据失败:', e);
-                bookings = [];
-            }
+            bookings = loadBookingDataWithRepair();
+            // 数据校验：确保每个预订有 id
+            bookings.forEach(function(b) {
+                if (!b.id) b.id = generateId();
+            });
+            console.log('[loadData] 最终加载条数:', bookings.length);
         }
 
         // 保存数据到 localStorage
@@ -1861,6 +2093,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
             render();
+            // 数据正常加载后执行自动备份
+            doBackup();
+            updateBackupInfo();
         });
 
         // 监听 ESC 键关闭弹窗

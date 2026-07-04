@@ -729,6 +729,128 @@
             font-size: 12px;
             color: var(--text-secondary);
         }
+
+        /* ===== 今日经营看板 ===== */
+        .dashboard-section {
+            max-width: 1400px;
+            margin: 12px auto;
+            padding: 0 12px;
+        }
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .dashboard-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dashboard-toggle {
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .dashboard-toggle:hover { background: #f0f0f0; }
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            transition: max-height 0.3s, opacity 0.3s;
+            overflow: hidden;
+        }
+        .dashboard-cards.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+        @media (max-width: 900px) {
+            .dashboard-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .dashboard-cards { grid-template-columns: 1fr; }
+        }
+        .dash-card {
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dash-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .dash-card.checkin { background: #e8f5e9; border-left: 4px solid #4caf50; }
+        .dash-card.checkout { background: #fff3e0; border-left: 4px solid #ff9800; }
+        .dash-card.staying { background: #e3f2fd; border-left: 4px solid #2196f3; }
+        .dash-card.free { background: #f5f5f5; border-left: 4px solid #9e9e9e; }
+        .dash-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .dash-count {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+        .dash-card.checkin .dash-count { color: #2e7d32; }
+        .dash-card.checkout .dash-count { color: #e65100; }
+        .dash-card.staying .dash-count { color: #1565c0; }
+        .dash-card.free .dash-count { color: #616161; }
+        .dash-count.empty {
+            font-size: 20px;
+            font-weight: 400;
+            color: #bbb;
+        }
+        .dash-guests {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .dash-guest-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .dash-guest-item:hover { background: rgba(255,255,255,0.95); }
+        .dash-guest-item .guest-name { font-weight: 500; }
+        .dash-guest-item .room-tag {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.08);
+            color: var(--text-secondary);
+        }
+        .dash-subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        /* 房间行高亮动画 */
+        @keyframes roomHighlight {
+            0% { background: #fff3e0; }
+            50% { background: #ffcc80; }
+            100% { background: #fff3e0; }
+        }
+        .room-row-highlight {
+            animation: roomHighlight 1s ease-in-out 3;
+        }
     </style>
 </head>
 <body>
@@ -1192,6 +1314,37 @@
                 <span>双床房</span>
             </div>
         </div>
+
+        <!-- 今日经营看板 -->
+        <div class="dashboard-section" id="dashboardSection">
+            <div class="dashboard-header">
+                <div class="dashboard-title">📊 今日经营看板</div>
+                <button class="dashboard-toggle" id="dashboardToggle" onclick="toggleDashboard()">收起 ▲</button>
+            </div>
+            <div class="dashboard-cards" id="dashboardCards">
+                <div class="dash-card checkin">
+                    <div class="dash-label">🏃 今日到店</div>
+                    <div class="dash-count" id="dashCheckinCount">0</div>
+                    <div class="dash-guests" id="dashCheckinList"></div>
+                </div>
+                <div class="dash-card checkout">
+                    <div class="dash-label">🚪 今日离店</div>
+                    <div class="dash-count" id="dashCheckoutCount">0</div>
+                    <div class="dash-guests" id="dashCheckoutList"></div>
+                </div>
+                <div class="dash-card staying">
+                    <div class="dash-label">🏠 当前在住</div>
+                    <div class="dash-count" id="dashStayingCount">0</div>
+                    <div class="dash-subtitle" id="dashStayingInfo">间客房</div>
+                </div>
+                <div class="dash-card free">
+                    <div class="dash-label">🛏️ 今日空闲</div>
+                    <div class="dash-count" id="dashFreeCount">0</div>
+                    <div class="dash-subtitle" id="dashFreeInfo">间可售</div>
+                </div>
+            </div>
+        </div>
+
     <div class="container" id="mainContainer">
         <!-- 动态生成楼层卡片 -->
     </div>
@@ -1513,6 +1666,149 @@
         // 生成唯一ID
         function generateId() {
             return 'bk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // ========================
+        // 今日经营看板
+        // ========================
+        const TOTAL_ROOMS = 9;
+        const ALL_ROOMS = ['8101','8102','8103','8201','8202','8203','8301','8302','8303'];
+
+        function getTodayStr() {
+            return formatDate(new Date());
+        }
+
+        function getTodayBookings() {
+            var today = getTodayStr();
+            var checkin = [], checkout = [], staying = [], bookedNotIn = [];
+
+            bookings.forEach(function(b) {
+                var inToday = (b.checkIn === today);
+                var outToday = (b.checkOut === today);
+                var dToday = parseDate(today);
+                var dIn = parseDate(b.checkIn);
+                var dOut = parseDate(b.checkOut);
+                var isStaying = (dToday >= dIn && dToday < dOut);
+
+                if (inToday) checkin.push(b);
+                if (outToday) checkout.push(b);
+                if (isStaying) staying.push(b);
+                // 已预订但尚未入住：checkIn 在今天之后
+                if (dIn > dToday) bookedNotIn.push(b);
+            });
+
+            return { checkin: checkin, checkout: checkout, staying: staying, bookedNotIn: bookedNotIn };
+        }
+
+        function renderDashboard() {
+            var stats = getTodayBookings();
+            var hasActivity = stats.checkin.length > 0 || stats.checkout.length > 0;
+
+            // 今日到店
+            var ciCount = document.getElementById('dashCheckinCount');
+            var ciList = document.getElementById('dashCheckinList');
+            if (stats.checkin.length > 0) {
+                ciCount.textContent = stats.checkin.length;
+                ciCount.classList.remove('empty');
+                ciList.innerHTML = stats.checkin.map(function(b) {
+                    return '<div class="dash-guest-item" onclick="scrollToRoom(\'' + b.room + '\')">' +
+                           '<span class="guest-name">' + escapeHtml(b.guestName) + '</span>' +
+                           '<span class="room-tag">' + b.room + '</span></div>';
+                }).join('');
+            } else {
+                ciCount.textContent = '无';
+                ciCount.classList.add('empty');
+                ciList.innerHTML = '<div class="dash-subtitle">今天没有新入住客人</div>';
+            }
+
+            // 今日离店
+            var coCount = document.getElementById('dashCheckoutCount');
+            var coList = document.getElementById('dashCheckoutList');
+            if (stats.checkout.length > 0) {
+                coCount.textContent = stats.checkout.length;
+                coCount.classList.remove('empty');
+                coList.innerHTML = stats.checkout.map(function(b) {
+                    return '<div class="dash-guest-item" onclick="scrollToRoom(\'' + b.room + '\')">' +
+                           '<span class="guest-name">' + escapeHtml(b.guestName) + '</span>' +
+                           '<span class="room-tag">' + b.room + '</span></div>';
+                }).join('');
+            } else {
+                coCount.textContent = '无';
+                coCount.classList.add('empty');
+                coList.innerHTML = '<div class="dash-subtitle">今天没有退房客人</div>';
+            }
+
+            // 当前在住（去重房间数）
+            var stayingRooms = new Set(stats.staying.map(function(b){ return b.room; }));
+            var sc = document.getElementById('dashStayingCount');
+            sc.textContent = stayingRooms.size;
+            sc.classList.remove('empty');
+            document.getElementById('dashStayingInfo').textContent = '间客房在住';
+
+            // 今日空闲 = 总房间 - 在住房间 - 今晚已预订但尚未入住的房间
+            var bookedTonightNotIn = new Set();
+            stats.bookedNotIn.forEach(function(b) {
+                // 只算今晚（今天日期）还未入住的
+                if (parseDate(b.checkIn) > parseDate(getTodayStr())) {
+                    bookedTonightNotIn.add(b.room);
+                }
+            });
+            // 在住房间和已预订房间可能有重叠，取并集
+            var occupiedOrBooked = new Set();
+            stayingRooms.forEach(function(r){ occupiedOrBooked.add(r); });
+            bookedTonightNotIn.forEach(function(r){ occupiedOrBooked.add(r); });
+            var freeCount = TOTAL_ROOMS - occupiedOrBooked.size;
+            var fc = document.getElementById('dashFreeCount');
+            fc.textContent = freeCount;
+            fc.classList.remove('empty');
+            document.getElementById('dashFreeInfo').textContent = '间可售';
+
+            // 自动折叠：无变动时默认折叠
+            var cards = document.getElementById('dashboardCards');
+            var toggle = document.getElementById('dashboardToggle');
+            if (!hasActivity && !cards.dataset.userToggled) {
+                cards.classList.add('collapsed');
+                if (toggle) toggle.textContent = '展开 ▼';
+            }
+        }
+
+        function toggleDashboard() {
+            var cards = document.getElementById('dashboardCards');
+            var toggle = document.getElementById('dashboardToggle');
+            cards.dataset.userToggled = 'true';
+            if (cards.classList.contains('collapsed')) {
+                cards.classList.remove('collapsed');
+                toggle.textContent = '收起 ▲';
+            } else {
+                cards.classList.add('collapsed');
+                toggle.textContent = '展开 ▼';
+            }
+        }
+
+        function scrollToRoom(room) {
+            // 查找对应房间所在楼层卡片
+            var floorCards = document.querySelectorAll('.floor-card');
+            var targetCard = null;
+            var targetRow = null;
+
+            floorCards.forEach(function(card) {
+                var rows = card.querySelectorAll('tbody tr');
+                rows.forEach(function(row) {
+                    var firstCell = row.querySelector('td:first-child');
+                    if (firstCell && firstCell.textContent.indexOf(room) !== -1) {
+                        targetCard = card;
+                        targetRow = row;
+                    }
+                });
+            });
+
+            if (targetCard && targetRow) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetRow.classList.add('room-row-highlight');
+                setTimeout(function() {
+                    targetRow.classList.remove('room-row-highlight');
+                }, 3000);
+            }
         }
 
         // ========================
@@ -1928,6 +2224,7 @@
             saveData();
             closeModal();
             render();
+            renderDashboard();
             showToast(isEdit ? '预订已更新' : '预订已添加', 'success');
         }
 
@@ -1980,6 +2277,7 @@
                 saveData();
                 closeModal();
                 render();
+                renderDashboard();
                 showToast('✓ 预订已删除', 'success');
             } else {
                 showToast('删除失败，未找到匹配的预订记录', 'error');
@@ -1994,6 +2292,7 @@
             bookings = [];
             saveData();
             render();
+            renderDashboard();
             showToast('所有数据已清空', 'success');
         }
 
@@ -2064,6 +2363,7 @@
 
                     saveData();
                     render();
+                    renderDashboard();
                     showToast(`导入完成：新增 ${added} 条，更新 ${updated} 条`, 'success');
 
                     // 清空 input 以便重复导入同一文件
@@ -2093,6 +2393,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
             render();
+            renderDashboard();
             // 数据正常加载后执行自动备份
             doBackup();
             updateBackupInfo();

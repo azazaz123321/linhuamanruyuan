@@ -21,6 +21,20 @@
             --card-bg: #fff;
             --header-bg: #f5f5f5;
         }
+        /* 触控最小高度 */
+        button, input, select, textarea, a, .btn, .floor-header {
+            min-height: 44px;
+        }
+        @media (min-width: 769px) {
+            button, input, select, textarea, a, .btn { min-height: auto; }
+        }
+        /* 触控最小高度 */
+        button, input, select, textarea, a, .btn, .floor-header {
+            min-height: 44px;
+        }
+        @media (min-width: 769px) {
+            button, input, select, textarea, a, .btn { min-height: auto; }
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background: #f0f2f5;
@@ -840,6 +854,388 @@
         .room-row-highlight {
             animation: roomHighlight 1s ease-in-out 3;
         }
+
+        /* ===========================================================
+           移动端适配 CSS (屏幕宽度 <= 768px)
+           =========================================================== */
+        @media (max-width: 768px) {
+            /* --- 全局 --- */
+            body { font-size: 15px; overflow-x: hidden; }
+            .container { padding: 8px; }
+
+            /* --- 顶部导航栏 --- */
+            .header { padding: 8px 12px; gap: 6px; }
+            .header-top { flex-wrap: wrap; gap: 6px; }
+            .header h1 { font-size: 16px; }
+            .month-nav { gap: 6px; width: 100%; justify-content: center; }
+            .month-nav button { width: 44px; height: 44px; font-size: 18px; border-radius: 8px; }
+            .month-nav .current-month { font-size: 15px; min-width: auto; flex: 1; }
+            .btn-today, .btn-clear, .btn-export, .btn-import {
+                font-size: 13px !important; padding: 8px 10px !important; height: 36px; min-width: auto !important;
+            }
+            .stats-bar { gap: 10px; font-size: 12px; justify-content: center; }
+            .user-bar { font-size: 13px; }
+            .user-bar .btn-logout { padding: 4px 8px; font-size: 12px; }
+            #btnAccountManage { padding: 4px 8px; font-size: 12px; margin-right: 4px; }
+
+            /* --- 今日经营看板 --- */
+            .dashboard-section { padding: 0 8px; margin: 8px auto; }
+            .dashboard-cards { grid-template-columns: 1fr !important; gap: 8px; }
+            .dash-card { padding: 12px; }
+            .dash-count { font-size: 24px; }
+            .dash-label { font-size: 13px; }
+            .dash-guest-item { font-size: 14px; padding: 6px 10px; }
+
+            /* --- 楼层卡片（手风琴折叠） --- */
+            .floor-card { margin-bottom: 10px; border-radius: 10px; }
+            .floor-header {
+                padding: 14px 12px;
+                font-size: 15px;
+                cursor: pointer;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+                position: relative;
+            }
+            .floor-header::after {
+                content: '▼';
+                position: absolute;
+                right: 12px;
+                font-size: 12px;
+                color: var(--text-secondary);
+                transition: transform 0.3s;
+            }
+            .floor-header.collapsed::after { transform: rotate(-90deg); }
+            .floor-header.collapsed + .calendar-wrapper,
+            .floor-header.collapsed ~ .calendar-wrapper {
+                display: none;
+            }
+            /* 移动端日历区域 */
+            .calendar-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 0;
+            }
+            .calendar-table th:first-child,
+            .calendar-table td:first-child {
+                min-width: 50px;
+                font-size: 12px;
+                position: sticky;
+                left: 0;
+                z-index: 10;
+                background: var(--card-bg);
+                box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+            }
+            .calendar-table th, .calendar-table td {
+                min-width: 28px;
+                width: 28px;
+                height: 40px;
+                font-size: 11px;
+            }
+            .calendar-table th { padding: 6px 2px; font-size: 10px; }
+            .day-num { font-size: 11px; }
+            .day-week { font-size: 9px; }
+            .guest-name { font-size: 10px; }
+            .cell-booked { font-size: 10px; }
+
+            /* --- 图例 --- */
+            .legend { padding: 8px; gap: 10px; justify-content: center; flex-wrap: wrap; }
+            .legend-item { font-size: 12px; }
+
+            /* --- 登录界面 --- */
+            .auth-box { width: 90%; padding: 28px 20px; }
+            .auth-logo h2 { font-size: 20px; }
+            .form-group label { font-size: 14px; }
+            .form-group input {
+                padding: 12px;
+                font-size: 16px; /* 防止iOS缩放 */
+                min-height: 44px;
+            }
+            .btn-submit { padding: 14px; font-size: 16px; min-height: 48px; }
+            .auth-switch { font-size: 13px; }
+
+            /* --- 模态框全屏化 --- */
+            .modal-overlay { align-items: flex-end; }
+            .modal-content {
+                width: 100%;
+                max-width: 100%;
+                max-height: 92vh;
+                border-radius: 16px 16px 0 0;
+                margin: 0;
+                animation: slideUp 0.25s ease;
+            }
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+            .modal-header { padding: 16px; }
+            .modal-header h3 { font-size: 17px; }
+            .modal-body { padding: 16px; max-height: calc(92vh - 120px); }
+            .form-row { flex-direction: column; gap: 12px; }
+            .form-group { min-width: auto !important; }
+            .form-group label { font-size: 14px; margin-bottom: 6px; }
+            .form-group input, .form-group select, .form-group textarea {
+                padding: 12px;
+                font-size: 16px;
+                min-height: 44px;
+                width: 100%;
+            }
+            .modal-footer {
+                position: sticky;
+                bottom: 0;
+                background: #fff;
+                padding: 12px 16px;
+                border-top: 1px solid #eee;
+            }
+            .btn { padding: 12px 20px; font-size: 15px; min-height: 48px; }
+
+            /* --- 账号管理模态框 --- */
+            .account-table th, .account-table td { padding: 10px 8px; font-size: 13px; }
+
+            /* --- 确认弹窗 --- */
+            .confirm-box { width: 90%; padding: 24px; }
+            .confirm-title { font-size: 16px; }
+            .confirm-message { font-size: 14px; }
+            .confirm-actions { flex-direction: column; gap: 10px; }
+            .confirm-actions .btn { width: 100%; }
+
+            /* --- Toast --- */
+            .toast-container { top: 60px; right: 8px; left: 8px; }
+            .toast { min-width: auto; max-width: 100%; padding: 12px 16px; font-size: 14px; }
+
+            /* --- 浮动"回到今天"按钮 --- */
+            .fab-today {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: var(--free);
+                color: white;
+                border: none;
+                font-size: 12px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+                z-index: 999;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                line-height: 1.2;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .fab-today:active { transform: scale(0.95); }
+            .fab-today.show { display: flex; }
+
+            /* --- Tooltip 在移动端隐藏（改用Toast） --- */
+            .tooltip { display: none !important; }
+        }
+
+        /* ===========================================================
+           小屏手机适配 (<= 480px)
+           =========================================================== */
+        @media (max-width: 480px) {
+            .header h1 { font-size: 15px; }
+            .month-nav button { width: 40px; height: 40px; }
+            .calendar-table th:first-child,
+            .calendar-table td:first-child { min-width: 44px; }
+            .calendar-table th, .calendar-table td {
+                min-width: 26px; width: 26px; height: 36px;
+            }
+            .dash-count { font-size: 22px; }
+        }
+
+        /* ===========================================================
+           移动端适配 CSS (屏幕宽度 <= 768px)
+           =========================================================== */
+        @media (max-width: 768px) {
+            /* --- 全局 --- */
+            body { font-size: 15px; overflow-x: hidden; }
+            .container { padding: 8px; }
+
+            /* --- 顶部导航栏 --- */
+            .header { padding: 8px 12px; gap: 6px; }
+            .header-top { flex-wrap: wrap; gap: 6px; }
+            .header h1 { font-size: 16px; }
+            .month-nav { gap: 6px; width: 100%; justify-content: center; }
+            .month-nav button { width: 44px; height: 44px; font-size: 18px; border-radius: 8px; }
+            .month-nav .current-month { font-size: 15px; min-width: auto; flex: 1; }
+            .btn-today, .btn-clear, .btn-export, .btn-import {
+                font-size: 13px !important; padding: 8px 10px !important; height: 36px; min-width: auto !important;
+            }
+            .stats-bar { gap: 10px; font-size: 12px; justify-content: center; }
+            .user-bar { font-size: 13px; }
+            .user-bar .btn-logout { padding: 4px 8px; font-size: 12px; }
+            #btnAccountManage { padding: 4px 8px; font-size: 12px; margin-right: 4px; }
+
+            /* --- 今日经营看板 --- */
+            .dashboard-section { padding: 0 8px; margin: 8px auto; }
+            .dashboard-cards { grid-template-columns: 1fr !important; gap: 8px; }
+            .dash-card { padding: 12px; }
+            .dash-count { font-size: 24px; }
+            .dash-label { font-size: 13px; }
+            .dash-guest-item { font-size: 14px; padding: 6px 10px; }
+
+            /* --- 楼层卡片（手风琴折叠） --- */
+            .floor-card { margin-bottom: 10px; border-radius: 10px; }
+            .floor-header {
+                padding: 14px 12px;
+                font-size: 15px;
+                cursor: pointer;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+                position: relative;
+            }
+            .floor-header::after {
+                content: '▼';
+                position: absolute;
+                right: 12px;
+                font-size: 12px;
+                color: var(--text-secondary);
+                transition: transform 0.3s;
+            }
+            .floor-header.collapsed::after { transform: rotate(-90deg); }
+            .floor-header.collapsed + .calendar-wrapper,
+            .floor-header.collapsed ~ .calendar-wrapper {
+                display: none;
+            }
+            /* 移动端日历区域 */
+            .calendar-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 0;
+            }
+            .calendar-table th:first-child,
+            .calendar-table td:first-child {
+                min-width: 50px;
+                font-size: 12px;
+                position: sticky;
+                left: 0;
+                z-index: 10;
+                background: var(--card-bg);
+                box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+            }
+            .calendar-table th, .calendar-table td {
+                min-width: 28px;
+                width: 28px;
+                height: 40px;
+                font-size: 11px;
+            }
+            .calendar-table th { padding: 6px 2px; font-size: 10px; }
+            .day-num { font-size: 11px; }
+            .day-week { font-size: 9px; }
+            .guest-name { font-size: 10px; }
+            .cell-booked { font-size: 10px; }
+
+            /* --- 图例 --- */
+            .legend { padding: 8px; gap: 10px; justify-content: center; flex-wrap: wrap; }
+            .legend-item { font-size: 12px; }
+
+            /* --- 登录界面 --- */
+            .auth-box { width: 90%; padding: 28px 20px; }
+            .auth-logo h2 { font-size: 20px; }
+            .form-group label { font-size: 14px; }
+            .form-group input {
+                padding: 12px;
+                font-size: 16px; /* 防止iOS缩放 */
+                min-height: 44px;
+            }
+            .btn-submit { padding: 14px; font-size: 16px; min-height: 48px; }
+            .auth-switch { font-size: 13px; }
+
+            /* --- 模态框全屏化 --- */
+            .modal-overlay { align-items: flex-end; }
+            .modal-content {
+                width: 100%;
+                max-width: 100%;
+                max-height: 92vh;
+                border-radius: 16px 16px 0 0;
+                margin: 0;
+                animation: slideUp 0.25s ease;
+            }
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+            .modal-header { padding: 16px; }
+            .modal-header h3 { font-size: 17px; }
+            .modal-body { padding: 16px; max-height: calc(92vh - 120px); }
+            .form-row { flex-direction: column; gap: 12px; }
+            .form-group { min-width: auto !important; }
+            .form-group label { font-size: 14px; margin-bottom: 6px; }
+            .form-group input, .form-group select, .form-group textarea {
+                padding: 12px;
+                font-size: 16px;
+                min-height: 44px;
+                width: 100%;
+            }
+            .modal-footer {
+                position: sticky;
+                bottom: 0;
+                background: #fff;
+                padding: 12px 16px;
+                border-top: 1px solid #eee;
+            }
+            .btn { padding: 12px 20px; font-size: 15px; min-height: 48px; }
+
+            /* --- 账号管理模态框 --- */
+            .account-table th, .account-table td { padding: 10px 8px; font-size: 13px; }
+
+            /* --- 确认弹窗 --- */
+            .confirm-box { width: 90%; padding: 24px; }
+            .confirm-title { font-size: 16px; }
+            .confirm-message { font-size: 14px; }
+            .confirm-actions { flex-direction: column; gap: 10px; }
+            .confirm-actions .btn { width: 100%; }
+
+            /* --- Toast --- */
+            .toast-container { top: 60px; right: 8px; left: 8px; }
+            .toast { min-width: auto; max-width: 100%; padding: 12px 16px; font-size: 14px; }
+
+            /* --- 浮动"回到今天"按钮 --- */
+            .fab-today {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: var(--free);
+                color: white;
+                border: none;
+                font-size: 12px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+                z-index: 999;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                line-height: 1.2;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .fab-today:active { transform: scale(0.95); }
+            .fab-today.show { display: flex; }
+
+            /* --- Tooltip 在移动端隐藏（改用Toast） --- */
+            .tooltip { display: none !important; }
+        }
+
+        /* ===========================================================
+           小屏手机适配 (<= 480px)
+           =========================================================== */
+        @media (max-width: 480px) {
+            .header h1 { font-size: 15px; }
+            .month-nav button { width: 40px; height: 40px; }
+            .calendar-table th:first-child,
+            .calendar-table td:first-child { min-width: 44px; }
+            .calendar-table th, .calendar-table td {
+                min-width: 26px; width: 26px; height: 36px;
+            }
+            .dash-count { font-size: 22px; }
+        }
     </style>
 </head>
 <body>
@@ -1145,6 +1541,36 @@
 
     // 在 DOM 加载完成后初始化认证
     document.addEventListener('DOMContentLoaded', function() {
+
+        // 移动端楼层折叠/展开
+        function toggleFloor(header) {
+            if (window.innerWidth > 768) return; // 桌面端不折叠
+            header.classList.toggle('collapsed');
+            var wrapper = header.nextElementSibling;
+            while (wrapper && !wrapper.classList.contains('calendar-wrapper')) {
+                wrapper = wrapper.nextElementSibling;
+            }
+            if (wrapper) {
+                wrapper.style.display = header.classList.contains('collapsed') ? 'none' : '';
+            }
+        }
+
+        // 移动端浮动按钮显示/隐藏控制
+        function updateFabToday() {
+            var fab = document.getElementById('fabToday');
+            if (!fab) return;
+            var isMobile = window.innerWidth <= 768;
+            var isCurrentMonth = (currentDate.getFullYear() === today.getFullYear() &&
+                                  currentDate.getMonth() === today.getMonth());
+            fab.classList.toggle('show', isMobile && !isCurrentMonth);
+        }
+
+        // 跳到今天
+        function goToToday() {
+            currentDate = new Date();
+            render();
+        }
+
         initAuth();
     });
     </script>
@@ -1788,6 +2214,26 @@
         // ========================
 
         // 渲染整个页面
+
+        // 移动端 Tooltip 替代：点击显示 Toast
+        function showMobileToast(cell, booking) {
+            if (window.innerWidth > 768) return false; // 桌面端不拦截
+            var msg = '👤 ' + booking.guestName + ' | 📞 ' + (booking.phone || '无') +
+                      ' | 💰 已收' + (booking.paid || 0) + '元';
+            showToast(msg, 2500);
+            return true;
+        }
+
+
+        // 移动端 Tooltip 替代：点击显示 Toast
+        function showMobileToast(cell, booking) {
+            if (window.innerWidth > 768) return false; // 桌面端不拦截
+            var msg = '👤 ' + booking.guestName + ' | 📞 ' + (booking.phone || '无') +
+                      ' | 💰 已收' + (booking.paid || 0) + '元';
+            showToast(msg, 2500);
+            return true;
+        }
+
         function render() {
             renderHeader();
             renderFloors();
@@ -2118,6 +2564,7 @@
             closeModal();
             render();
             renderDashboard();
+            updateFabToday();
             showToast(isEdit ? '预订已更新' : '预订已添加', 'success');
         }
 
@@ -2171,6 +2618,7 @@
                 closeModal();
                 render();
                 renderDashboard();
+            updateFabToday();
                 showToast('✓ 预订已删除', 'success');
             } else {
                 showToast('删除失败，未找到匹配的预订记录', 'error');
@@ -2186,6 +2634,7 @@
             saveData();
             render();
             renderDashboard();
+            updateFabToday();
             showToast('所有数据已清空', 'success');
         }
 
@@ -2257,6 +2706,7 @@
                     saveData();
                     render();
                     renderDashboard();
+            updateFabToday();
                     showToast(`导入完成：新增 ${added} 条，更新 ${updated} 条`, 'success');
 
                     // 清空 input 以便重复导入同一文件
@@ -2287,12 +2737,23 @@
             loadData();
             render();
             renderDashboard();
+            updateFabToday();
             // 数据正常加载后执行自动备份
             doBackup();
             updateBackupInfo();
         });
 
         // 监听 ESC 键关闭弹窗
+
+        // 窗口大小变化时更新布局
+        window.addEventListener('resize', function() {
+            updateFabToday();
+        });
+
+        // 窗口大小变化时更新布局
+        window.addEventListener('resize', function() {
+            updateFabToday();
+        });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
                 closeModal();
@@ -2332,5 +2793,9 @@
         </div>
     </div>
 
+    <!-- 移动端浮动"回到今天"按钮 -->
+    <button class="fab-today" id="fabToday" onclick="goToToday()">
+        <span>今天</span>
+    </button>
 </body>
 </html>

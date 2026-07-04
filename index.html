@@ -883,8 +883,8 @@
     const DEFAULT_ADMIN_PASSWORD = "admin123";
 
     // localStorage 键名
-    var LS_KEY_USERS = 'users';   // 账号数据 [{username, password, role}]
-    var SS_KEY_CURR  = 'currentUser'; // sessionStorage 当前登录用户
+    var LS_KEY_USERS = 'users';       // 账号数据 [{username, password, role}]
+    var LS_KEY_CURR  = 'currentUser'; // 当前登录用户（localStorage 持久化）
 
     // ─── 工具函数 ─────────────────────────────────────────────────────────────
     function clearAuthErrors() {
@@ -935,7 +935,7 @@
     }
 
     function getCurrentUser() {
-        return sessionStorage.getItem(SS_KEY_CURR);
+        return localStorage.getItem(LS_KEY_CURR);
     }
 
     function getCurrentUserRole() {
@@ -993,13 +993,13 @@
         }
 
         console.log('[doLogin] 登录成功:', username);
-        sessionStorage.setItem(SS_KEY_CURR, username);
+        localStorage.setItem(LS_KEY_CURR, username);
         enterApp(username);
     }
 
     // ─── 注销函数 ─────────────────────────────────────────────────────────────
     function logout() {
-        sessionStorage.removeItem(SS_KEY_CURR);
+        localStorage.removeItem(LS_KEY_CURR);
         location.reload();
     }
 
@@ -1034,7 +1034,7 @@
             if (valid) {
                 enterApp(currentUser);
             } else {
-                sessionStorage.removeItem(SS_KEY_CURR);
+                localStorage.removeItem(LS_KEY_CURR);
                 showLoginState();
             }
         } else {

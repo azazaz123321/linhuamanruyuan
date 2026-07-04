@@ -900,22 +900,31 @@
         try {
             var raw = localStorage.getItem(LS_KEY_USERS);
             if (!raw) {
-                // 首次打开：初始化默认老板账号
-                var defaultUsers = [{ username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' }];
+                // 首次打开：初始化默认老板账号 + 员工账号
+                var defaultUsers = [
+                    { username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' },
+                    { username: 'staff1', password: '123456', role: 'staff' }
+                ];
                 localStorage.setItem(LS_KEY_USERS, JSON.stringify(defaultUsers));
                 return defaultUsers;
             }
             var parsed = JSON.parse(raw);
             if (!Array.isArray(parsed)) {
                 console.warn('[getUsers] 数据损坏（非数组），重置为默认');
-                var defaultUsers = [{ username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' }];
+                var defaultUsers = [
+                    { username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' },
+                    { username: 'staff1', password: '123456', role: 'staff' }
+                ];
                 localStorage.setItem(LS_KEY_USERS, JSON.stringify(defaultUsers));
                 return defaultUsers;
             }
             return parsed;
         } catch(e) {
             console.error('[getUsers] 解析失败，重置为默认:', e.message);
-            var defaultUsers = [{ username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' }];
+            var defaultUsers = [
+                { username: 'admin', password: DEFAULT_ADMIN_PASSWORD, role: 'boss' },
+                { username: 'staff1', password: '123456', role: 'staff' }
+            ];
             localStorage.setItem(LS_KEY_USERS, JSON.stringify(defaultUsers));
             return defaultUsers;
         }
@@ -1010,9 +1019,17 @@
 
     // ─── 初始化认证状态 ───────────────────────────────────────────────────────
     function initAuth() {
+        // 同步默认员工账号（兼容已访问过的用户）
+        var users = getUsers();
+        var hasStaff = users.some(function(u){ return u.username === 'staff1'; });
+        if (!hasStaff) {
+            users.push({ username: 'staff1', password: '123456', role: 'staff' });
+            saveUsers(users);
+            console.log('[initAuth] 已自动添加默认员工账号 staff1');
+        }
+
         var currentUser = getCurrentUser();
         if (currentUser) {
-            var users = getUsers();
             var valid = users.some(function(u){ return u.username === currentUser; });
             if (valid) {
                 enterApp(currentUser);

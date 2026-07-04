@@ -744,11 +744,26 @@
             });
         }
         function getUsers() {
-            try { return JSON.parse(localStorage.getItem('linhua_users') || '[]'); }
-            catch(e) { return []; }
+            try {
+                var raw = localStorage.getItem('linhua_users');
+                if (!raw) return [];
+                var parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) {
+                    localStorage.setItem('linhua_users', '[]');
+                    return [];
+                }
+                return parsed;
+            } catch(e) {
+                localStorage.setItem('linhua_users', '[]');
+                return [];
+            }
         }
         function saveUsers(users) {
-            localStorage.setItem('linhua_users', JSON.stringify(users));
+            try {
+                localStorage.setItem('linhua_users', JSON.stringify(users));
+            } catch(e) {
+                throw new Error('存储空间不足，请清理浏览器缓存后重试（浏览器设置 → 清除数据）');
+            }
         }
         function doRegister() {
             clearAuthErrors();
@@ -768,7 +783,12 @@
                 return;
             }
             users.push({ username: username, password: password });
-            saveUsers(users);
+            try {
+                saveUsers(users);
+            } catch(e) {
+                err.textContent = e.message;
+                return;
+            }
             // 自动登录
             localStorage.setItem('linhua_currentUser', username);
             enterApp(username);
@@ -783,7 +803,7 @@
             var users = getUsers();
             var user = users.find(function(u){ return u.username === username && u.password === password; });
             if (!user) {
-                err.textContent = '用户名或密码错误';
+                err.textContent = '用户名或密码错误，请检查输入';
                 return;
             }
             localStorage.setItem('linhua_currentUser', username);

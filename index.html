@@ -556,6 +556,23 @@
             margin: 8px 0 0;
         }
         .auth-box .auth-logo p {
+        .btn-reset-all {
+            display: block;
+            margin: 16px auto 0;
+            padding: 8px 16px;
+            background: none;
+            border: 1.5px solid #ccc;
+            border-radius: 8px;
+            color: #999;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-reset-all:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        .auth-box .auth-logo p {
             color: #888;
             font-size: 13px;
             margin: 4px 0 0;
@@ -718,122 +735,211 @@
                     已有账号？<a onclick="showLogin()">去登录</a>
                 </div>
             </div>
+
+            <!-- 重置所有数据按钮 -->
+            <button class="btn-reset-all" onclick="confirmResetAll()">🔄 重置所有数据</button>
         </div>
     </div>
 
     <script>
-        // ===== 用户认证系统 =====
-        // 支持多个注册密钥，请按需修改
-        var REG_KEYS = ['MINSHU2026', 'HUAYU888', 'LINHUA666'];
+    // ===== 用户认证系统 =====
+    // ★★★ 请按需修改注册密钥列表 ★★★
+    var REG_KEYS = ['MINSHU2026', 'HUAYU888', 'LINHUA666'];
+    var LS_KEY_USERS = 'linhua_users';
+    var LS_KEY_CURR   = 'linhua_currentUser';
+    // ★★★ 排期数据键名（不要改动，不要与登录系统混淆） ★★★
+    // var LS_KEY_BOOKING = 'bookingData';  // 排期数据由排期模块自行管理
 
-        function showReg() {
-            document.getElementById('loginForm').classList.remove('active');
-            document.getElementById('regForm').classList.add('active');
-            clearAuthErrors();
-        }
-        function showLogin() {
-            document.getElementById('regForm').classList.remove('active');
-            document.getElementById('loginForm').classList.add('active');
-            clearAuthErrors();
-        }
-        function clearAuthErrors() {
-            document.getElementById('loginErrorMsg').textContent = '';
-            document.getElementById('regErrorMsg').textContent = '';
-            ['loginUsername','loginPassword','regUsername','regPassword','regPassword2','regSecret'].forEach(function(id){
-                document.getElementById(id).classList.remove('error');
-            });
-        }
-        function getUsers() {
-            try {
-                var raw = localStorage.getItem('linhua_users');
-                if (!raw) return [];
-                var parsed = JSON.parse(raw);
-                if (!Array.isArray(parsed)) {
-                    localStorage.setItem('linhua_users', '[]');
-                    return [];
-                }
-                return parsed;
-            } catch(e) {
-                localStorage.setItem('linhua_users', '[]');
+    // ─── 工具函数 ───────────────────────────────
+    function showReg() {
+        document.getElementById('loginForm').classList.remove('active');
+        document.getElementById('regForm').classList.add('active');
+        clearAuthErrors();
+    }
+    function showLogin() {
+        document.getElementById('regForm').classList.remove('active');
+        document.getElementById('loginForm').classList.add('active');
+        clearAuthErrors();
+    }
+    function clearAuthErrors() {
+        document.getElementById('loginErrorMsg').textContent = '';
+        document.getElementById('regErrorMsg').textContent = '';
+        ['loginUsername','loginPassword','regUsername','regPassword','regPassword2','regSecret'].forEach(function(id){
+            var el = document.getElementById(id);
+            if (el) el.classList.remove('error');
+        });
+    }
+    // 读取 users 数组
+    function getUsers() {
+        try {
+            var raw = localStorage.getItem(LS_KEY_USERS);
+            if (!raw) { console.log('[getUsers] localStorage 无数据，返回 []'); return []; }
+            var parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                console.warn('[getUsers] 数据格式错误（非数组），重置为 []');
+                localStorage.setItem(LS_KEY_USERS, '[]');
                 return [];
             }
+            console.log('[getUsers] 读取到', parsed.length, '个用户:', JSON.stringify(parsed));
+            return parsed;
+        } catch(e) {
+            console.error('[getUsers] 读取出错:', e.message, '，重置为 []');
+            localStorage.setItem(LS_KEY_USERS, '[]');
+            return [];
         }
-        function saveUsers(users) {
-            try {
-                localStorage.setItem('linhua_users', JSON.stringify(users));
-            } catch(e) {
-                throw new Error('存储空间不足，请清理浏览器缓存后重试（浏览器设置 → 清除数据）');
+    }
+    // 保存 users 数组（唯一写入入口）
+    function saveUsers(users) {
+        try {
+            localStorage.setItem(LS_KEY_USERS, JSON.stringify(users));
+            console.log('[saveUsers] 保存成功，当前 users:', JSON.stringify(users));
+        } catch(e) {
+            console.error('[saveUsers] 保存失败:', e.message);
+            throw e;
+        }
+    }
+
+    // ─── 注册函数 ───────────────────────────────
+    function doRegister() {
+        clearAuthErrors();
+        var username = document.getElementById('regUsername').value.trim();
+        var password = document.getElementById('regPassword').value;
+        var password2 = document.getElementById('regPassword2').value;
+        var secret = document.getElementById('regSecret').value;
+        var err = document.getElementById('regErrorMsg');
+        console.log('[doRegister] 开始注册，用户名:', username);
+
+        // 第1步：前端校验
+        if (!username) { err.textContent = '用户名不能为空'; return; }
+        if (!password) { err.textContent = '密码不能为空'; return; }
+        if (password !== password2) { err.textContent = '两次密码输入不一致'; return; }
+        if (REG_KEYS.indexOf(secret) === -1) { err.textContent = '注册密钥无效，请联系老板获取'; return; }
+
+        // 第2步：读取现有用户
+        var users = getUsers();
+        console.log('[doRegister] 当前 users 数量:', users.length);
+
+        // 第3步：检查重复
+        var exists = users.some(function(u){ return u.username === username; });
+        console.log('[doRegister] 用户名重复检查:', exists);
+        if (exists) { err.textContent = '用户名已被注册'; return; }
+
+        // 第4步：写入 localStorage
+        users.push({ username: username, password: password });
+        console.log('[doRegister] 即将写入 users:', JSON.stringify(users));
+        try {
+            saveUsers(users);
+        } catch(e) {
+            err.textContent = '注册失败：' + e.message;
+            return;
+        }
+
+        // 第5步：二次验证——从 localStorage 读出确认数据已持久化
+        var verify = getUsers();
+        var verified = verify.some(function(u){ return u.username === username; });
+        console.log('[doRegister] 二次验证结果:', verified, '| 验证后 users:', JSON.stringify(verify));
+        if (!verified) {
+            err.textContent = '注册失败：数据写入异常，请刷新页面后重试';
+            return;
+        }
+
+        // 第6步：设置当前用户并进入主界面
+        localStorage.setItem(LS_KEY_CURR, username);
+        console.log('[doRegister] ✅ 注册成功，自动登录:', username);
+        enterApp(username);
+    }
+
+    // ─── 登录函数 ───────────────────────────────
+    function doLogin() {
+        clearAuthErrors();
+        var username = document.getElementById('loginUsername').value.trim();
+        var password = document.getElementById('loginPassword').value;
+        var err = document.getElementById('loginErrorMsg');
+        console.log('[doLogin] 开始登录，用户名:', username);
+
+        if (!username) { err.textContent = '用户名不能为空'; return; }
+        if (!password) { err.textContent = '密码不能为空'; return; }
+
+        // 严格读取并查找
+        var users = getUsers();
+        console.log('[doLogin] 开始遍历 users，查找:', username);
+        var user = null;
+        for (var i = 0; i < users.length; i++) {
+            var u = users[i];
+            console.log('[doLogin] 比对第', i, '个:', u.username, '| 密码匹配:', u.password === password);
+            if (u.username === username && u.password === password) {
+                user = u;
+                break;
             }
         }
-        function doRegister() {
-            clearAuthErrors();
-            var username = document.getElementById('regUsername').value.trim();
-            var password = document.getElementById('regPassword').value;
-            var password2 = document.getElementById('regPassword2').value;
-            var secret = document.getElementById('regSecret').value;
-            var err = document.getElementById('regErrorMsg');
-            // 验证
-            if (!username) { err.textContent = '用户名不能为空'; return; }
-            if (!password) { err.textContent = '密码不能为空'; return; }
-            if (password !== password2) { err.textContent = '两次密码输入不一致'; return; }
-            if (REG_KEYS.indexOf(secret) === -1) { err.textContent = '注册密钥无效，请联系老板获取'; return; }
+
+        if (!user) {
+            console.warn('[doLogin] ❌ 未找到匹配用户，当前 users:', JSON.stringify(users));
+            err.textContent = '用户名或密码错误（' + users.length + '个已注册用户）';
+            return;
+        }
+
+        localStorage.setItem(LS_KEY_CURR, username);
+        console.log('[doLogin] ✅ 登录成功:', username);
+        enterApp(username);
+    }
+
+    // ─── 注销函数 ───────────────────────────────
+    // ★★★ 注意：只清除 currentUser，绝不触动 users 和 bookingData ★★★
+    function logout() {
+        console.log('[logout] 注销，当前 users:', JSON.stringify(getUsers()));
+        localStorage.removeItem(LS_KEY_CURR);  // 仅清除登录状态
+        // 不动 users 数组、不动 bookingData
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('appContent').style.display = 'none';
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        clearAuthErrors();
+        showLogin();
+        console.log('[logout] ✅ 已返回登录页');
+    }
+
+    // ─── 进入主界面 ─────────────────────────────
+    function enterApp(username) {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('appContent').style.display = 'block';
+        document.getElementById('userDisplayName').textContent = username;
+        console.log('[enterApp] ✅ 进入主界面，当前用户:', username);
+    }
+
+    // ─── 重置所有数据（登录页专用）────────────────
+    function confirmResetAll() {
+        if (!confirm('⚠️ 确定要重置所有数据吗？\n\n这将清除：\n- 所有用户账号\n- 所有预订记录\n- 登录状态\n\n此操作不可恢复！')) return;
+        console.log('[confirmResetAll] 用户确认，清空全部 localStorage');
+        localStorage.clear();
+        alert('✅ 所有数据已清空，页面将刷新');
+        location.reload();
+    }
+
+    // ─── 初始化 ─────────────────────────────────
+    function initAuth() {
+        var currentUser = localStorage.getItem(LS_KEY_CURR);
+        console.log('[initAuth] 检查登录状态，currentUser:', currentUser);
+        if (currentUser) {
+            // 验证 currentUser 是否在 users 中仍存在（用户可能被删了）
             var users = getUsers();
-            if (users.some(function(u){ return u.username === username; })) {
-                err.textContent = '用户名已被注册';
-                return;
-            }
-            users.push({ username: username, password: password });
-            try {
-                saveUsers(users);
-            } catch(e) {
-                err.textContent = e.message;
-                return;
-            }
-            // 自动登录
-            localStorage.setItem('linhua_currentUser', username);
-            enterApp(username);
-        }
-        function doLogin() {
-            clearAuthErrors();
-            var username = document.getElementById('loginUsername').value.trim();
-            var password = document.getElementById('loginPassword').value;
-            var err = document.getElementById('loginErrorMsg');
-            if (!username) { err.textContent = '用户名不能为空'; return; }
-            if (!password) { err.textContent = '密码不能为空'; return; }
-            var users = getUsers();
-            var user = users.find(function(u){ return u.username === username && u.password === password; });
-            if (!user) {
-                err.textContent = '用户名或密码错误，请检查输入';
-                return;
-            }
-            localStorage.setItem('linhua_currentUser', username);
-            enterApp(username);
-        }
-        function logout() {
-            localStorage.removeItem('linhua_currentUser');
-            document.getElementById('authOverlay').style.display = 'flex';
-            document.getElementById('appContent').style.display = 'none';
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
-            clearAuthErrors();
-            showLogin();
-        }
-        function enterApp(username) {
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('appContent').style.display = 'block';
-            document.getElementById('userDisplayName').textContent = username;
-        }
-        function initAuth() {
-            var currentUser = localStorage.getItem('linhua_currentUser');
-            if (currentUser) {
+            var valid = users.some(function(u){ return u.username === currentUser; });
+            if (valid) {
                 enterApp(currentUser);
             } else {
+                console.warn('[initAuth] currentUser 不在 users 中，清除登录状态');
+                localStorage.removeItem(LS_KEY_CURR);
                 document.getElementById('authOverlay').style.display = 'flex';
                 document.getElementById('appContent').style.display = 'none';
                 showLogin();
             }
+        } else {
+            document.getElementById('authOverlay').style.display = 'flex';
+            document.getElementById('appContent').style.display = 'none';
+            showLogin();
         }
-        initAuth();
+    }
+    initAuth();
     </script>
 
     <!-- 顶部导航与统计 -->

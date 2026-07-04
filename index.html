@@ -264,7 +264,31 @@
         }
         /* 状态颜色 */
         .cell-free { background: #e8f5e9; }
-        .cell-booked { background: #ffebee; color: var(--booked); font-weight: 600; font-size: 12px; }
+        /* === 状态颜色 === */
+        .cell-booked {
+            background: #fff3e0;
+            color: #e65100;
+            font-weight: 600;
+            font-size: 12px;
+            position: relative;
+        }
+        .cell-checked-in {
+            background: #1565c0;
+            color: #fff;
+            font-weight: 600;
+            font-size: 12px;
+            position: relative;
+        }
+        /* 状态小图标 */
+        .status-icon {
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            font-size: 9px;
+            line-height: 1;
+            opacity: 0.7;
+        }
+        .cell-checked-in .status-icon { color: rgba(255,255,255,0.8); }
         .cell-past { background: #eeeeee; color: #9e9e9e; cursor: default !important; }
         .cell-past:hover { transform: none; box-shadow: none; }
         .cell-today { background: #fff3e0; position: relative; }
@@ -279,8 +303,10 @@
             border-radius: 50%;
             background: var(--today);
         }
-        .cell-today.cell-booked { background: #ffccbc; }
-        .cell-today.cell-booked::after { background: #fff; }
+        .cell-today.cell-booked { background: #ffe0b2; }
+        .cell-today.cell-booked::after { background: #e65100; }
+        .cell-today.cell-checked-in { background: #1976d2; }
+        .cell-today.cell-checked-in::after { background: #fff; }
 
         /* 姓名缩写 */
         .guest-name {
@@ -936,6 +962,10 @@
             .day-week { font-size: 9px; }
             .guest-name { font-size: 10px; }
             .cell-booked { font-size: 10px; }
+            .cell-checked-in { font-size: 10px; }
+            .status-icon { font-size: 7px; }
+            .cell-checked-in { font-size: 10px; }
+            .status-icon { font-size: 7px; }
 
             /* --- 图例 --- */
             .legend { padding: 8px; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -1605,8 +1635,12 @@
                 空闲 <span class="stat-value" id="statFree">0</span> 天
             </div>
             <div class="stat-item">
-                <span class="stat-dot booked"></span>
-                已预订 <span class="stat-value" id="statBooked">0</span> 天
+                <span class="stat-dot" style="background:#FF9800;"></span>
+                已预约 <span class="stat-value" id="statBooked">0</span> 天
+            </div>
+            <div class="stat-item">
+                <span class="stat-dot" style="background:#1565C0;"></span>
+                已入住 <span class="stat-value" id="statCheckedIn">0</span> 天
             </div>
             <div class="stat-item">
                 <span class="stat-dot past"></span>
@@ -1636,6 +1670,11 @@
             <div class="dashboard-header">
                 <div class="dashboard-title">📊 今日经营看板</div>
                 <button class="dashboard-toggle" id="dashboardToggle" onclick="toggleDashboard()">收起 ▲</button>
+            </div>
+            <!-- 批量操作按钮 -->
+            <div class="batch-actions" id="batchActions">
+                <button class="btn btn-primary" onclick="batchCheckInToday()" style="background:#FF9800;border-color:#FF9800;">🚀 一键全部入住</button>
+                <button class="btn btn-danger" onclick="batchCheckOutToday()">🚪 一键全部退房</button>
             </div>
             <div class="dashboard-cards" id="dashboardCards">
                 <div class="dash-card checkin">
@@ -1704,6 +1743,8 @@
                 <div class="conflict-msg" id="conflictMsg">
                     ⚠️ 该日期范围与已有预订冲突，请选择其他日期。
                 </div>
+                <!-- 状态显示区域（编辑时显示） -->
+                <div id="bookingStatusDisplay" style="display:none;"></div>
                 <div class="form-group">
                     <label>房间</label>
                     <input type="text" id="formRoom" readonly>
@@ -1962,9 +2003,11 @@
         // 从 localStorage 读取数据（带损坏自动修复）
         function loadData() {
             bookings = loadBookingDataWithRepair();
-            // 数据校验：确保每个预订有 id
+            // 数据校验：确保每个预订有 id 和 status
             bookings.forEach(function(b) {
                 if (!b.id) b.id = generateId();
+                // 兼容旧数据：无 status 默认 "booked"（已预约）
+                if (!b.status) b.status = 'booked';
             });
             console.log('[loadData] 最终加载条数:', bookings.length);
         }
@@ -2006,11 +2049,14 @@
                 var dOut = parseDate(b.checkOut);
                 var isStaying = (dToday >= dIn && dToday < dOut);
 
-                if (inToday) checkin.push(b);
-                if (outToday) checkout.push(b);
-                if (isStaying) staying.push(b);
-                // 已预订但尚未入住：checkIn 在今天之后
-                if (dIn > dToday) bookedNotIn.push(b);
+                // 今日到店：只显示已预约且今天入住的（已入住的不重复显示）
+                if (inToday && b.status === 'booked') checkin.push(b);
+                // 今日离店：只显示已入住且今天退房的
+                if (outToday && b.status === 'checked-in') checkout.push(b);
+                // 当前在住：只统计已入住的
+                if (isStaying && b.status === 'checked-in') staying.push(b);
+                // 已预订但尚未入住：checkIn 在今天之后，且状态为已预约
+                if (dIn > dToday && b.status === 'booked') bookedNotIn.push(b);
             });
 
             return { checkin: checkin, checkout: checkout, staying: staying, bookedNotIn: bookedNotIn };
@@ -2180,7 +2226,11 @@
             const booking = bookings.find(b =>
                 b.room === room && isDateInBooking(dateStr, b)
             );
-            if (booking) return { type: 'booked', booking };
+            if (booking) {
+                // 根据状态返回不同类型：已预约=booked, 已入住=checked-in
+                var type = booking.status === 'checked-in' ? 'checked-in' : 'booked';
+                return { type: type, booking: booking };
+            }
             if (isPast(date)) return { type: 'past', booking: null };
             if (isToday(date)) return { type: 'today', booking: null };
             return { type: 'free', booking: null };
@@ -2225,14 +2275,7 @@
         }
 
 
-        // 移动端 Tooltip 替代：点击显示 Toast
-        function showMobileToast(cell, booking) {
-            if (window.innerWidth > 768) return false; // 桌面端不拦截
-            var msg = '👤 ' + booking.guestName + ' | 📞 ' + (booking.phone || '无') +
-                      ' | 💰 已收' + (booking.paid || 0) + '元';
-            showToast(msg, 2500);
-            return true;
-        }
+
 
         function render() {
             renderHeader();
@@ -2342,8 +2385,9 @@
                     // 设置单元格样式和事件
                     td.className = `cell-${state.type}`;
 
-                    if (state.type === 'booked' && state.booking) {
-                        td.innerHTML = `<span class="guest-name">${state.booking.guestName.charAt(0)}</span>`;
+                    if ((state.type === 'booked' || state.type === 'checked-in') && state.booking) {
+                        var icon = state.type === 'checked-in' ? '🏠' : '⏰';
+                        td.innerHTML = `<span class="guest-name">${state.booking.guestName.charAt(0)}</span><span class="status-icon">${icon}</span>`;
                         td.dataset.bookingId = state.booking.id;
                         // 悬停显示 tooltip
                         td.addEventListener('mouseenter', (e) => showTooltip(e, state.booking));
@@ -2372,7 +2416,7 @@
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
             const daysInMonth = getDaysInMonth(year, month);
-            let freeDays = 0, bookedDays = 0, pastDays = 0;
+            let freeDays = 0, bookedDays = 0, checkedInDays = 0, pastDays = 0;
 
             FLOOR_CONFIG.forEach(floor => {
                 floor.rooms.forEach(room => {
@@ -2380,6 +2424,7 @@
                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         const state = getCellState(room, dateStr);
                         if (state.type === 'booked') bookedDays++;
+                        else if (state.type === 'checked-in') checkedInDays++;
                         else if (state.type === 'past') pastDays++;
                         else freeDays++;
                     }
@@ -2388,6 +2433,7 @@
 
             document.getElementById('statFree').textContent = freeDays;
             document.getElementById('statBooked').textContent = bookedDays;
+            document.getElementById('statCheckedIn').textContent = checkedInDays;
             document.getElementById('statPast').textContent = pastDays;
         }
 
@@ -2477,6 +2523,9 @@
             formCheckIn.value = dateStr;
             formCheckOut.value = dateStr;
             conflictMsg.classList.remove('show');
+            // 隐藏状态区域（新增无状态）
+            var statusDisplay = document.getElementById('bookingStatusDisplay');
+            if (statusDisplay) statusDisplay.style.display = 'none';
             modalFooter.innerHTML = `
                 <button class="btn btn-secondary" onclick="closeModal()">取消</button>
                 <button class="btn btn-primary" onclick="saveBooking()">保存</button>
@@ -2497,6 +2546,22 @@
             formCheckIn.value = booking.checkIn;
             formCheckOut.value = booking.checkOut;
             conflictMsg.classList.remove('show');
+
+            // 显示状态区域
+            var statusDisplay = document.getElementById('bookingStatusDisplay');
+            var statusText = booking.status === 'checked-in' ? '已入住' : '已预约';
+            var statusClass = booking.status === 'checked-in' ? 'checked-in' : 'booked';
+            var statusActionBtn = '';
+            if (booking.status === 'booked') {
+                statusActionBtn = '<button class="btn btn-primary" onclick="checkInBooking()" style="font-size:12px;padding:4px 10px;">办理入住</button>';
+            } else if (booking.status === 'checked-in') {
+                statusActionBtn = '<button class="btn btn-danger" onclick="showCheckOutConfirm()" style="font-size:12px;padding:4px 10px;">办理退房</button>';
+            }
+            statusDisplay.innerHTML = '<span class="status-label">状态：' + statusText + '</span>' +
+                '<div class="status-actions">' + statusActionBtn + '</div>';
+            statusDisplay.className = 'booking-status-display ' + statusClass;
+            statusDisplay.style.display = 'flex';
+
             modalFooter.innerHTML = `
                 <button class="btn btn-danger btn-delete" onclick="showDeleteConfirm()">删除</button>
                 <button class="btn btn-secondary" onclick="closeModal()">取消</button>
@@ -2511,6 +2576,9 @@
             editingId = null;
             selectedRoom = null;
             selectedDate = null;
+            // 隐藏状态区域
+            var statusDisplay = document.getElementById('bookingStatusDisplay');
+            if (statusDisplay) statusDisplay.style.display = 'none';
         }
 
         // 保存预订（新增或编辑）
@@ -2539,14 +2607,15 @@
             }
 
             if (editingId) {
-                // 编辑：更新已有预订，保留 createdBy
+                // 编辑：更新已有预订，保留 createdBy 和 status
                 const idx = bookings.findIndex(b => b.id === editingId);
                 if (idx !== -1) {
                     const existingCreatedBy = bookings[idx].createdBy;
-                    bookings[idx] = { id: editingId, room, guestName, guestPhone, checkIn, checkOut, deposit, createdBy: existingCreatedBy };
+                    const existingStatus = bookings[idx].status || 'booked';
+                    bookings[idx] = { id: editingId, room, guestName, guestPhone, checkIn, checkOut, deposit, createdBy: existingCreatedBy, status: existingStatus };
                 }
             } else {
-                // 新增
+                // 新增：默认状态为已预约
                 bookings.push({
                     id: generateId(),
                     room,
@@ -2555,7 +2624,8 @@
                     checkIn,
                     checkOut,
                     deposit,
-                    createdBy: getCurrentUser() || '未知'
+                    createdBy: getCurrentUser() || '未知',
+                    status: 'booked'
                 });
             }
 
@@ -2618,12 +2688,84 @@
                 closeModal();
                 render();
                 renderDashboard();
-            updateFabToday();
+                updateFabToday();
                 showToast('✓ 预订已删除', 'success');
             } else {
                 showToast('删除失败，未找到匹配的预订记录', 'error');
             }
             closeConfirm();
+        }
+
+        // ========================
+        // 状态管理：办理入住 / 退房
+        // ========================
+
+        // 办理入住：将已预约改为已入住
+        function checkInBooking() {
+            if (!editingId) {
+                showToast('请先选择预订记录', 'error');
+                return;
+            }
+            var idx = bookings.findIndex(b => b.id === editingId);
+            if (idx === -1) {
+                showToast('找不到预订记录', 'error');
+                return;
+            }
+            if (bookings[idx].status === 'checked-in') {
+                showToast('该订单已入住，无需重复操作', 'info');
+                return;
+            }
+            bookings[idx].status = 'checked-in';
+            bookings[idx].lastModifiedBy = getCurrentUser() || '未知';
+            bookings[idx].checkInAt = formatDate(new Date());
+            saveData();
+            closeModal();
+            render();
+            renderDashboard();
+            updateFabToday();
+            showToast('✓ 已办理入住', 'success');
+        }
+
+        // 办理退房确认弹窗（使用现有 confirmOverlay）
+        let pendingCheckOutId = null;
+
+        function showCheckOutConfirm() {
+            if (!editingId) {
+                showToast('请先选择预订记录', 'error');
+                return;
+            }
+            pendingCheckOutId = editingId;
+            confirmOverlay.querySelector('.confirm-box h4').textContent = '⚠️ 确认退房';
+            confirmOverlay.querySelector('.confirm-box p').textContent = '确定要办理退房吗？该房间将恢复为空闲状态。';
+            confirmOverlay.querySelector('.btn-danger').textContent = '确认退房';
+            confirmOverlay.querySelector('.btn-danger').onclick = confirmCheckOut;
+            confirmOverlay.classList.add('active');
+        }
+
+        // 执行退房：直接删除预订记录（房间恢复空闲）
+        function confirmCheckOut() {
+            if (!pendingCheckOutId) {
+                showToast('退房失败：找不到预订记录', 'error');
+                closeConfirm();
+                return;
+            }
+            const beforeCount = bookings.length;
+            bookings = bookings.filter(b => b.id !== pendingCheckOutId);
+            if (bookings.length < beforeCount) {
+                saveData();
+                closeModal();
+                render();
+                renderDashboard();
+                updateFabToday();
+                showToast('✓ 已办理退房，房间已释放', 'success');
+            } else {
+                showToast('退房失败，未找到匹配的预订记录', 'error');
+            }
+            pendingCheckOutId = null;
+            closeConfirm();
+            // 恢复删除按钮的原始 onclick
+            confirmOverlay.querySelector('.btn-danger').onclick = confirmDelete;
+            confirmOverlay.querySelector('.btn-danger').textContent = '删除';
         }
 
         // 清空所有数据
@@ -2636,6 +2778,59 @@
             renderDashboard();
             updateFabToday();
             showToast('所有数据已清空', 'success');
+        }
+
+        // ========================
+        // 批量状态操作
+        // ========================
+
+        // 一键全部入住：将今天预计到店的所有已预约订单转为已入住
+        function batchCheckInToday() {
+            var today = getTodayStr();
+            var targets = bookings.filter(function(b) {
+                return b.checkIn === today && b.status === 'booked';
+            });
+            if (targets.length === 0) {
+                showToast('今天没有待入住的预约订单', 'info');
+                return;
+            }
+            if (!confirm('确定要将今天 ' + targets.length + ' 个预约订单全部办理入住吗？')) return;
+
+            var count = 0;
+            targets.forEach(function(b) {
+                b.status = 'checked-in';
+                b.lastModifiedBy = getCurrentUser() || '未知';
+                b.checkInAt = today;
+                count++;
+            });
+            saveData();
+            render();
+            renderDashboard();
+            updateFabToday();
+            showToast('✓ 已批量办理 ' + count + ' 个入住', 'success');
+        }
+
+        // 一键全部退房：将今天应离店的所有已入住订单批量退房
+        function batchCheckOutToday() {
+            var today = getTodayStr();
+            var targets = bookings.filter(function(b) {
+                return b.checkOut === today && b.status === 'checked-in';
+            });
+            if (targets.length === 0) {
+                showToast('今天没有待退房的入住订单', 'info');
+                return;
+            }
+            if (!confirm('确定要将今天 ' + targets.length + ' 个入住订单全部办理退房吗？\\n\\n退房后这些房间将恢复为空闲状态。')) return;
+
+            var count = targets.length;
+            // 删除这些订单
+            var idsToRemove = new Set(targets.map(function(b){ return b.id; }));
+            bookings = bookings.filter(function(b) { return !idsToRemove.has(b.id); });
+            saveData();
+            render();
+            renderDashboard();
+            updateFabToday();
+            showToast('✓ 已批量办理 ' + count + ' 个退房，房间已释放', 'success');
         }
 
         // ========================
